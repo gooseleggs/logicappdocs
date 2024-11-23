@@ -226,19 +226,46 @@ $objects | ForEach-Object {
         if ([bool]$_.PSObject.Properties['Inputs']) {
             $inputs = ($_.Inputs | ConvertFrom-Json)
         }
-        
+
         $key = $_.Type
         switch ($key) {
             "ApiConnection" {
                 # If this is a secret (or looks like a secret)
                 if ( ($inputs.path).startsWith('/secrets/') ) {
-                    $secretsPath = $inputs.path                 
+                    # Split the string by the / operator
+                    $secretsPath = $($inputs.path) -split "/"
+                    
+                    $secretsPath = $secretsPath[($secretsPath.count)-2] -split "'"
+                    $value = $secretsPath[1] 
+                    $key = 'Secret'               
                 } 
             }
+            "Function" {
+                # Work out the function name by the URL
+                $value = $($inputs.function.id) -split "/"
+                $value = $value[($value.count)-3]
+            }
+            "Workflow" {
+                 # Work out the workflow (logicApp) name by the URL
+                 $value = $($inputs.host.workflow.id) -split "/"
+                 $value = $value[($value.count)-1]  
+
+                 # If this is a logic app...
+                 if ($($inputs.host.workflow.id) -match '.*Microsoft.Logic.*') {
+                    # ... make it show that
+                    $key = 'Logic App'             
+                 }
+            }
+            "Http" {
+                # Work out the workflow (logicApp) name by the URL
+                if ($value.startsWith("HTTP_-_")) {
+                    $value = $value -replace "HTTP_-_", ""
+                }            
+           }            
         }
         
         # Add to mindmap if correct type
-        if ( $key -in 'ApiConnection','Function','Http') {
+        if ( $key -in 'ApiConnection','Function','Http', 'Secret', 'Workflow', 'Logic App') {
             if ($null -eq $arrayCallouts[$key]) {
                 $arrayCallouts[$key] = @()
             }
@@ -260,6 +287,8 @@ if ($arrayCallouts.count -ge 1) {
         }
     }
 }
+
+Write-Host ('Finished creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
 
 Sort-Action -Actions $objects
 
