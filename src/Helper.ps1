@@ -36,7 +36,7 @@ Function Get-Action {
             Write-Warning ('Action {0} has no runafter property' -f $actionName)
             #Set runafter to parent if parent is not null
             if ($Parent) {
-                $runAfter = $Parent
+                $runAfter = $Parent  -replace '(-False|-True)', ''
             }
             else {
                 $runAfter = $null
