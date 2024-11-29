@@ -40,6 +40,22 @@ Login-AzAccount -SubscriptionId <SubscriptionId>
 
 <img src="./images/logicappscript.png" alt="Powershell script screenshot of New-LogicAppDoc.ps1 script running in console" width="1200">
 
+### Command line options
+ | parameter | type | default | description |
+ | --- | --- | --- | --- |
+ | replaceU0027  | Bool | false | Removes U0027 characters from output |
+ | show | Bool | false | Show markdown file when finished |
+ | ConvertToADOMarkdown | Bool | false | Use ADO compatible syntax |
+ | SubscriptionId | String | | Subscription ID |
+ | ResourceGroupName | String | | Resource group for logic apps |
+ | SubscriptionName | String | | Name of subscription |
+ | Location | String | | location name |
+ | FilePath | String | | Input file (for offline use) |
+ | LogicAppName | String | | Name of the logic app |
+ | OutputPath | String | | Output file directory |
+
+
+
 ## Run the New-PowerAutomateDoc.ps1 PowerShell script to create the Markdown file for a Power Automate Flow
 
 Navigate to the folder where you have cloned the repository and run the New-PowerAutomateDoc.ps1 script.

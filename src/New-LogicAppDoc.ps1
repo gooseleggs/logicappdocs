@@ -29,6 +29,9 @@ Param(
     [boolean]$ConvertToADOMarkdown = $false,
 
     [Parameter(Mandatory = $false)]
+    [bool] $replaceU0027 = $false,
+
+    [Parameter(Mandatory = $false)]
     [bool]$Show = $false
 )
 
@@ -260,6 +263,15 @@ if ($outputFile -match '\s') {
     $outputFile = $newOutputFile
 }
 Write-Host ('LogicApp Flow Markdown document is being created at {0}' -f $outputFile) -ForegroundColor Green
+#endregion
+
+
+#region replace \u0027 with ' in Markdown documentation for Logic App Workflow
+if($replaceU0027){
+    $pathToDocumentationFile = $outputFile
+    $documentationFileData = Get-Content -Path $pathToDocumentationFile 
+    $documentationFileData -replace '\\u0027' , "'" | set-content -path $pathToDocumentationFile 
+}
 #endregion
 
 #region Convert Markdown to ADOMarkdown if ConvertTo-ADOMarkdown parameter is used
