@@ -36,7 +36,7 @@ Function Get-Action {
             Write-Warning ('Action {0} has no runafter property' -f $actionName)
             #Set runafter to parent if parent is not null
             if ($Parent) {
-                $runAfter = $Parent
+                $runAfter = $Parent  -replace '(-False|-True)', ''
             }
             else {
                 $runAfter = $null
@@ -78,20 +78,32 @@ Function Get-Action {
                 Write-Verbose -Message ('Processing action {0}' -f $actionName)
                 # Check if Action has any actions for the true condition
                 if (![string]::IsNullOrEmpty($action.actions)) { 
-                    Get-Action -Actions $($action.Actions) -Parent ('{0}-True' -f $actionName)
+                    # Make sure there are actions to be done and not an empty list
+                    if (![string]::IsNullOrEmpty($action.Actions)) {
+                        Get-Action -Actions $($action.Actions) -Parent ('{0}-True' -f $actionName)
+                    }
                     # Get the actions for the false condition
-                    Get-Action -Actions $($action.else.Actions) -Parent ('{0}-False' -f $actionName)
+                    # Make sure there are actions to be done and not an empty list
+                    if (![string]::IsNullOrEmpty($action.else.Actions)) {
+                        Get-Action -Actions $($action.else.Actions) -Parent ('{0}-False' -f $actionName)
+                    }
                 }
             }
             #When there is only action for the true condition
             else {
-                Get-Action -Actions $($action.Actions) -Parent ('{0}-True' -f $actionName)
+                # Make sure there are actions to be done and not an empty list
+                if (![string]::IsNullOrEmpty($action.Actions)) {
+                    Get-Action -Actions $($action.Actions) -Parent ('{0}-True' -f $actionName)
+                }
             }
         }
 
         # Recursively call the function for child actions
         elseif ($action | Get-Member -MemberType Noteproperty -Name 'Actions') {
-            Get-Action -Actions $($action.Actions) -Parent $actionName
+            # Make sure there are actions to be done
+            if (![string]::IsNullOrEmpty($action.Actions)) {
+                Get-Action -Actions $($action.Actions) -Parent $actionName
+            }
         }
     }   
 }
