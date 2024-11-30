@@ -185,13 +185,21 @@ $mermaidCode += "    Trigger" + [Environment]::NewLine
 
 # Group actions by parent property
 $objects | Group-Object -Property Parent | ForEach-Object {
+    $displayName = ''
     if (![string]::IsNullOrEmpty($_.Name)) {
         $subgraphName = $_.Name
-        $mermaidCode += "    subgraph $subgraphName" + [Environment]::NewLine
+        if ($subgraphName.EndsWith("-True")) { $displayName = ' [True&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
+        if ($subgraphName.EndsWith("False")) { $displayName = ' [False&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
+        $mermaidCode += "    subgraph $subgraphName$displayName" + [Environment]::NewLine
         $mermaidCode += "    direction TB" + [Environment]::NewLine
         # Add children action nodes to subgraph
-        foreach ($childAction in $_.Group.ActionName) {
-            $mermaidCode += "        $childAction" + [Environment]::NewLine
+        foreach ($index in $_.Group) {
+            $displayName=''
+            $childAction = $index.ActionName
+#            if ( $index.type -eq 'If') {
+#                $displayName = "{$childAction}"
+#            }
+            $mermaidCode += "        $childAction$displayName" + [Environment]::NewLine
         }
         $mermaidCode += "    end" + [Environment]::NewLine
     }
