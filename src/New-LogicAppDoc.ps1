@@ -193,9 +193,9 @@ $objects | Group-Object -Property Parent | ForEach-Object {
         foreach ($index in $_.Group) {
             $displayName=''
             $childAction = $index.ActionName
-            if ( $index.type -eq 'If') {
-                $displayName = "{$subgraphName}"
-            }
+#            if ( $index.type -eq 'If') {
+#                $displayName = "{$childAction}"
+#            }
             $mermaidCode += "        $childAction$displayName" + [Environment]::NewLine
         }
         $mermaidCode += "    end" + [Environment]::NewLine
