@@ -1,1 +1,3 @@
 .vscode/settings.json
+examples/Azure-Kelvin*
+tests/Test-Logic*

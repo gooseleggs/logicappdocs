@@ -171,6 +171,9 @@ else {
     }
 }
 
+# Ensure that there is an array of objects!
+if ($objects -isnot [system.array]) { $objects = @($objects)}
+
 if ($VerbosePreference -eq 'Continue') {
     Write-Verbose -Message ('Found {0} actions in Logic App' -f $Objects.Count)
     Write-Verbose ($objects | Format-Table | out-string)
@@ -181,7 +184,6 @@ Write-Host ('Creating Mermaid Diagram for Logic App') -ForegroundColor Green
 
 $mermaidCode = "graph TB" + [Environment]::NewLine
 $mermaidCode += "    Trigger" + [Environment]::NewLine
-
 
 # Group actions by parent property
 $objects | Group-Object -Property Parent | ForEach-Object {
@@ -227,6 +229,40 @@ foreach ($object in $objects) {
 $firstActionLink = ($objects | Where-Object { $_.Runafter -eq $null }).ActionName
 $mermaidCode += "    Trigger --> $firstActionLink" + [Environment]::NewLine
 
+# Create the Call-out graph
+Write-Host ('Creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
+
+$calloutGraph = ''
+$objects | Group-Object -Property Type | ForEach-Object {
+    # Skip types that are internal
+    if (! ($($_.name) -in 'Foreach','If','Compose', 'ParseJson', 'Response','InitializeVariable','until','SetVariable','Terminate','Query','Scope','Select')) {
+        $name = $_.Name
+        $calloutGraph += "    $name" + [Environment]::NewLine
+        foreach ($childAction in $_.Group) {
+            $value = $childAction.Value
+            if ($name -eq 'Http') {
+                $guid = New-Guid
+                $value = $value.SubString(0, [math]::min($value.IndexOf("?"),$value.length))
+                $calloutGraph += "      $guid$ (`"$value`")"  + [Environment]::NewLine
+            } else {
+                if ($value -eq '') { $value = $childAction.ActionName}
+                $calloutGraph += "      $value" + [Environment]::NewLine
+            }
+        }
+    }
+}
+
+# Generate chart
+$mermaidCallout = ''
+if ($calloutGraph -ne '') {
+    $mermaidCallout = "mindmap" + [Environment]::NewLine
+    $mermaidCallout += "  root($LogicAppName)" + [Environment]::NewLine
+    $mermaidCallout += $calloutGraph
+}
+Write-Verbose ($mermaidCallout)
+
+Write-Host ('Finished creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
+
 Sort-Action -Actions $objects
 
 if ($VerbosePreference -eq 'Continue') {
@@ -236,16 +272,17 @@ if ($VerbosePreference -eq 'Continue') {
 
 #region Generate Markdown documentation for Logic App Workflow
 $InputObject = [pscustomobject]@{
-    'LogicApp'    = [PSCustomObject]@{
+    'LogicApp'       = [PSCustomObject]@{
         Name              = $LogicAppName
         ResourceGroupName = $resourceGroupName
         Location          = $Location
         SubscriptionName  = $SubscriptionName
 
     }
-    'Actions'     = $objects
-    'Connections' = $Connections
-    'Diagram'     = $mermaidCode
+    'Actions'        = $objects
+    'Connections'    = $Connections
+    'Diagram'        = $mermaidCode
+    'CalloutDiagram' = $mermaidCallout
 }
 
 $options = New-PSDocumentOption -Option @{ 'Markdown.UseEdgePipes' = 'Always'; 'Markdown.ColumnPadding' = 'Single' };
@@ -288,7 +325,7 @@ if ($ConvertToADOMarkdown) {
     . (Join-Path $PSScriptRoot 'Bootstrap.ps1')
     Write-Host ('Converting Markdown to ADOMarkdown') -ForegroundColor Green
     $converttedOutputFile = ($outputFile -replace '.md$', '-ado.md')
-    & {mmdc -i $outputFile  -o $converttedOutputFile -e png}
+    & { mmdc -i $outputFile  -o $converttedOutputFile -e png }
     Write-Host ('ADOMarkdown document is being created at {0}' -f $converttedOutputFile) -ForegroundColor Green
 }
 

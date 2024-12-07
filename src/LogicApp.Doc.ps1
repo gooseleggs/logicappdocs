@@ -19,7 +19,15 @@ Document 'Azure-LogicApp-Documentation' {
         
         "Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     }
-   
+
+    Section 'Logic App Call-Out Diagram' -If {  $($InputObject.CalloutDiagram) -ne '' } {
+        @"        
+``````mermaid
+$($InputObject.CalloutDiagram)
+``````
+"@         
+    }
+
     Section 'Logic App Workflow Diagram' {
         @"        
 ``````mermaid

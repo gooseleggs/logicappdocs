@@ -6,13 +6,13 @@ $params = @{
     SubscriptionName = 'Visual Studio Enterprise'
     ResourceGroupName = 'jiraintegration-demo-rg'
     Location         = 'westeurope'
-    FilePath         = '..\examples\logic-jiraintegration-demo.json'
+    FilePath         = '..\examples\Azure-Kelvin-LogicApp.json'
     LogicAppName     = 'logic-jiraintegration-demo'
-    OutputPath       = $($env:TEMP)
-    Verbose          = $true
+    OutputPath       = '..\examples\Azure-Kelvin-LogicApp.md'
+    Verbose          = $false
     Debug            = $false
     ConvertToADOMarkdown = $false
-    Show             = $true
+    Show             = $false
 }
 
 . ..\src\New-LogicAppDoc.ps1 @params
