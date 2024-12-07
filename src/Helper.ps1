@@ -2,6 +2,73 @@
     Helper script containing helper functions for the LogicAppDoc and PowerAutomateDoc PowerShell scripts.
 #>
 
+Function Get-Category {
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory = $true)]
+        $action
+    )
+
+    $type = $action.type
+    $value = ''
+    switch ($action.type) {
+        "ApiConnection" {
+            # If this is a secret (or looks like a secret)
+            if ( ($action.inputs.path).startsWith('/secrets/') ) {
+                # Split the string by the / operator
+                $secretsPath = $($action.inputs.path) -split "/"
+                $secretsPath = $secretsPath[($secretsPath.count)-2] -split "'"
+                $value = $secretsPath[1]
+                $type = "Keystore"
+            }
+            if ( ($action.inputs.path).startsWith('/emails') ) {
+                $type = "SendEmail"
+                $value = ($action.inputs.body.recipients.to | select -expand address) -join ","
+                $value = $value -replace "@","#commat;"
+            }
+            if ( ($action.inputs.path).startsWith('/v2/datasets') ) {
+                $type = "SQL"
+            }
+        }
+        "Function" {
+            # Work out the function name by the URL
+            $value = $($action.inputs.function.id) -split "/"
+            $value = $value[($value.count)-3]
+            $type = "Function"
+        }
+        "Workflow" {
+             # Work out the workflow (logicApp) name by the URL
+             $value = $($action.inputs.host.workflow.id) -split "/"
+             $value = $value[($value.count)-1]
+
+             # If this is a logic app...
+             if ($($action.inputs.host.workflow.id) -match '.*Microsoft.Logic.*') {
+                # ... make it show that
+                $type = 'Logic App'
+             }
+        }
+        "PowershellCode" {
+            $value = $action.inputs.CodeFile
+        }
+        "Http" {
+            # Work out the workflow (logicApp) name by the URL
+             $value = $action.inputs.uri
+             $value = $value.replace( "@{parameters('", "[")
+             $value = $value.replace("')}","]")
+        }
+        "ServiceProvider" {
+            # If this is a keyvault blob
+            if ($($action.inputs.serviceProviderConfiguration.serviceProviderId) -eq '/serviceProviders/keyVault') {
+                $type = 'KeyVault'
+                $value = $action.inputs.parameters.secretName
+            }
+        }
+    }
+    return @{type= $type
+             value = $value
+            }
+}
+
 Function Get-Action {
 
     [CmdletBinding()]
@@ -43,7 +110,11 @@ Function Get-Action {
             }
         }     
         
-        
+        # Categorization of what component does
+        $category = Get-Category -action $action 
+        Write-Verbose ('Type {0}' -f $category.type)
+        Write-Verbose ('Value {0}' -f $category.value)
+
         $inputs = if ($action | Get-Member -MemberType Noteproperty -Name 'inputs') { 
             $($action.inputs)
         } 
@@ -60,8 +131,9 @@ Function Get-Action {
         [PSCustomObject]@{
             ActionName   = $actionName
             RunAfter     = $runAfter
-            Type         = $type
+            Value        = $category.value
             Parent       = $Parent
+            Type         = $category.type
             ChildActions = $childActions
             Inputs       = if ($inputs) {
                 Format-HTMLInputContent -Inputs $(Remove-Secrets -Inputs $($inputs | ConvertTo-Json -Depth 10 -Compress))

@@ -168,6 +168,9 @@ else {
     }
 }
 
+# Ensure that there is an array of objects!
+if ($objects -isnot [system.array]) { $objects = @($objects)}
+
 if ($VerbosePreference -eq 'Continue') {
     Write-Verbose -Message ('Found {0} actions in Logic App' -f $Objects.Count)
     Write-Verbose ($objects | Format-Table | out-string)
@@ -218,75 +221,34 @@ $mermaidCode += "    Trigger --> $firstActionLink" + [Environment]::NewLine
 # Create the Call-out graph
 Write-Host ('Creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
 
-$arrayCallouts = @{}
-$objects | ForEach-Object {
-    if (![string]::IsNullOrEmpty($_.ActionName)) {
-        # add to call out graph
-        $value = $_.ActionName
-        if ([bool]$_.PSObject.Properties['Inputs']) {
-            $inputs = ($_.Inputs | ConvertFrom-Json)
-        }
-
-        $key = $_.Type
-        switch ($key) {
-            "ApiConnection" {
-                # If this is a secret (or looks like a secret)
-                if ( ($inputs.path).startsWith('/secrets/') ) {
-                    # Split the string by the / operator
-                    $secretsPath = $($inputs.path) -split "/"
-                    
-                    $secretsPath = $secretsPath[($secretsPath.count)-2] -split "'"
-                    $value = $secretsPath[1] 
-                    $key = 'Secret'               
-                } 
+$calloutGraph = ''
+$objects | Group-Object -Property Type | ForEach-Object {
+    # Skip types that are internal
+    if (! ($($_.name) -in 'Foreach','If','Compose', 'ParseJson', 'Response','InitializeVariable','until','SetVariable','Terminate','Query','Scope','Select')) {
+        $name = $_.Name
+        $calloutGraph += "    $name" + [Environment]::NewLine
+        foreach ($childAction in $_.Group) {
+            $value = $childAction.Value
+            if ($name -eq 'Http') {
+                $guid = New-Guid
+                $value = $value.SubString(0, [math]::min($value.IndexOf("?"),$value.length))
+                $calloutGraph += "      $guid$ (`"$value`")"  + [Environment]::NewLine
+            } else {
+                if ($value -eq '') { $value = $childAction.ActionName}
+                $calloutGraph += "      $value" + [Environment]::NewLine
             }
-            "Function" {
-                # Work out the function name by the URL
-                $value = $($inputs.function.id) -split "/"
-                $value = $value[($value.count)-3]
-            }
-            "Workflow" {
-                 # Work out the workflow (logicApp) name by the URL
-                 $value = $($inputs.host.workflow.id) -split "/"
-                 $value = $value[($value.count)-1]  
-
-                 # If this is a logic app...
-                 if ($($inputs.host.workflow.id) -match '.*Microsoft.Logic.*') {
-                    # ... make it show that
-                    $key = 'Logic App'             
-                 }
-            }
-            "Http" {
-                # Work out the workflow (logicApp) name by the URL
-                if ($value.startsWith("HTTP_-_")) {
-                    $value = $value -replace "HTTP_-_", ""
-                }            
-           }            
-        }
-        
-        # Add to mindmap if correct type
-        if ( $key -in 'ApiConnection','Function','Http', 'Secret', 'Workflow', 'Logic App') {
-            if ($null -eq $arrayCallouts[$key]) {
-                $arrayCallouts[$key] = @()
-            }
-    
-            $arrayCallouts[$key] += $value
         }
     }
 }
 
 # Generate chart
 $mermaidCallout = ''
-if ($arrayCallouts.count -ge 1) {
+if ($calloutGraph -ne '') {
     $mermaidCallout = "mindmap" + [Environment]::NewLine
     $mermaidCallout += "  root($LogicAppName)" + [Environment]::NewLine
-    foreach ($type in $arrayCallouts.Keys) {
-        $mermaidCallout += "    $type" + [Environment]::NewLine
-        foreach ($callout in $arrayCallouts.$type) {
-            $mermaidCallout += "      $callout" + [Environment]::NewLine
-        }
-    }
+    $mermaidCallout += $calloutGraph
 }
+Write-Verbose ($mermaidCallout)
 
 Write-Host ('Finished creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
 
