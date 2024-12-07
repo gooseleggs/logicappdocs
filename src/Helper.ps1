@@ -212,7 +212,7 @@ Function Sort-Action {
                         # Fix issue when an async response is never used as a runafter property. Then use action that has same RunAfter propery as the current action.
                         if ($Actions | Where-Object { !($_ | Get-Member -MemberType NoteProperty 'Order') -and (![string]::IsNullOrEmpty($_.Parent)) }) {
                             # Check there is only one action, if not then use action that has same RunAfter propery as the current action.
-                            if (($Actions | Where-Object { !($_ | Get-Member -MemberType NoteProperty 'Order') -and (![string]::IsNullOrEmpty($_.Parent)) }).count -eq 1) {
+                            if (@(($Actions | Where-Object { !($_ | Get-Member -MemberType NoteProperty 'Order') -and (![string]::IsNullOrEmpty($_.Parent)) })).count -eq 1) {
                                 $Actions | Where-Object { !($_ | Get-Member -MemberType NoteProperty 'Order') -and (![string]::IsNullOrEmpty($_.Parent)) } | 
                                 Add-Member -MemberType NoteProperty -Name Order -Value $indexNumber 
                                 # CurrentAction
