@@ -271,12 +271,12 @@ Function Sort-Action {
                     $indexNumber++                    
                 }
                 # Current error is that there can be an newly created action that does not have a parent property.???
-                elseif (($null -ne $currentAction.Parent) -and ($Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, ($currentAction.Parent).length - 5))) } )) {
-                    $Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, ($currentAction.Parent).length - 5))) }  |
+                elseif (($null -ne $currentAction.Parent) -and ($Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, [math]::max(1,($currentAction.Parent).length - 5)))) } )) {
+                    $Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, [math]::max(1,($currentAction.Parent).length - 5)))) }  |
                     Add-Member -MemberType NoteProperty -Name Order -Value $indexNumber 
                     # Fix the issue when currentAction is empty
-                    if ($Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, ($currentAction.Parent).length - 5))) }) {
-                        $currentAction = $Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, ($currentAction.Parent).length - 5))) }
+                    if ($Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, [math]::max(1,($currentAction.Parent).length - 5)))) }) {
+                        $currentAction = $Actions | Where-Object { $_.RunAfter -eq $(('{0}-False') -f $(($currentAction.Parent).Substring(0, [math]::max(1,($currentAction.Parent).length - 5)))) }
                     }
                     # Increment the indexNumber
                     $indexNumber++
