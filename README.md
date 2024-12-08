@@ -107,8 +107,13 @@ And finally some great PowerShell community members for their feedback and sugge
 
 *V1.2.0 - TO BE RELEASED
 * Added call out graph
+* Merge of Confluence pull request from upstream repository
+* 
 * Bug Fixes
-  * 
+  * Fix length problem for actionName < 5 characters
+  * Fix count problems 
+  * Fix order problems
+  * Fix issue where actions with an empty scope caused an exception
 
 v1.1.5 - 2024-04-02
 * Bug fixes
