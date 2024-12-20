@@ -211,6 +211,8 @@ $objects | Group-Object -Property Parent | ForEach-Object {
 # Create links between runafter and actionname properties
 foreach ($object in $objects) {
     if ($object | Get-Member -MemberType NoteProperty -Name 'RunAfter') {
+        # If this is a scope object, skip otherwise we end up with a pointer back to outselves
+        if ($object.Type -eq 'Scope') { continue }
         # Check if the runafter property is not empty
         if (![string]::IsNullOrEmpty($object.RunAfter)) { 
             if (($object.runAfter | Measure-Object).count -eq 1) {
