@@ -185,34 +185,112 @@ Write-Host ('Creating Mermaid Diagram for Logic App') -ForegroundColor Green
 $mermaidCode = "graph TB" + [Environment]::NewLine
 $mermaidCode += "    Trigger" + [Environment]::NewLine
 
+#$inIf = 0
+$ifCache = @{}
 # Group actions by parent property
 $objects | Group-Object -Property Parent | ForEach-Object {
-    $displayName = ''
+    $subgraphDisplayName = ''
+    $blockCode = ''
     if (![string]::IsNullOrEmpty($_.Name)) {
         $subgraphName = $_.Name
-        if ($subgraphName.EndsWith("-True")) { $displayName = ' [True&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
-        if ($subgraphName.EndsWith("False")) { $displayName = ' [False&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
-        $mermaidCode += "    subgraph $subgraphName$displayName" + [Environment]::NewLine
-        $mermaidCode += "    direction TB" + [Environment]::NewLine
+        if ($subgraphName.EndsWith("-True")) { $subgraphDisplayName = ' [True&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
+        if ($subgraphName.EndsWith("-False")) { $subgraphDisplayName = ' [False&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
+        $blockCode += "    subgraph $subgraphName$subgraphDisplayName" + [Environment]::NewLine
+        $blockCode += "    direction TB" + [Environment]::NewLine
         # Add children action nodes to subgraph
         foreach ($index in $_.Group) {
             $displayName=''
             $childAction = $index.ActionName
-#            if ( $index.type -eq 'If') {
-#                $displayName = "{$childAction}"
-#            }
-            $mermaidCode += "        $childAction$displayName" + [Environment]::NewLine
+            if ( $index.type -eq 'If') {
+                write-host "***************** $childAction is a $($index.type)"
+                $blockCode += "      subgraph $childAction$($displayName)If [ ]" + [Environment]::NewLine
+                $blockCode += "      direction TB" + [Environment]::NewLine
+                $blockCode += "        $childAction$displayName{$childAction}" + [Environment]::NewLine
+                $blockCode += "!{$childAction}" + [Environment]::NewLine
+                $blockCode += "      end" + [Environment]::NewLine
+#                $inIf ++
+                $displayName = "{$childAction}"
+            } else {
+                $blockCode += "        $childAction$displayName" + [Environment]::NewLine
+            }
         }
-        $mermaidCode += "    end" + [Environment]::NewLine
+#        $inIf--
+#        if (!$inIf) { $blockCode += "    end" + [Environment]::NewLine }
+        $blockCode += "    end" + [Environment]::NewLine
+        if (![string]::IsNullOrEmpty($subgraphDisplayName)) {
+            write-host "Writing $subgraphName to cache"
+            $ifName = $subgraphName -replace '(-False|-True)', ''
+            if ($ifCache[$ifName]) {
+                $ifCache[$ifName].Code += $blockCode
+            } else {
+                $ifCache[$ifName] += @{code = $blockCode; found = $false}
+            }
+        } else {
+            $mermaidCode += $blockCode
+        }
+
     }
     else {}        
+}
+
+# Iterate over the cache until cache is emptied replacing placeholders with code
+if ($ifCache.count -gt 0) {
+    $repeat = 1
+    while ($repeat) {
+        $repeat = 0
+        foreach ($cacheObject in $ifCache.GetEnumerator()) {
+            if ($mermaidCode | Select-String -Pattern "!{$($cacheObject.Name)}") {
+                Write-Host "$($cacheObject.Name): $($cacheObject.Value.code)"
+                $mermaidCode = $mermaidCode.replace("!{$($cacheObject.Name)}", $($cacheObject.Value.code))
+                $ifCache[$cacheObject.Name].found = $true
+            } else {
+                if (!($cacheObject.Value.found)) {
+                    write-host "$($cacheObject.Name) is not in string"
+                    $repeat = 1
+                }
+            }         
+        }
+    }
+}
+
+# Iterate over the array again, to add in any that was missed for whatever reason (should not happen)
+foreach ($cacheObject in $ifCache.GetEnumerator()) {
+    if (!($cacheObject.Value.Found)) {
+        $mermaidCode += $cacheObject.Value.code
+    }
 }
 
 # Create links between runafter and actionname properties
 foreach ($object in $objects) {
     if ($object | Get-Member -MemberType NoteProperty -Name 'RunAfter') {
         # If this is a scope object, skip otherwise we end up with a pointer back to outselves
-        if ($object.Type -eq 'Scope') { continue }
+#        if ($object.Type -eq 'Scope') { continue }
+
+        # If the RHS object is a scope object, then ignore it
+        if ($objects | Where-Object { $_.Type -eq 'Scope' -and $_.ActionName -eq $object.RunAfter } ) {
+            continue
+        }
+
+        # If this is a branch coming from an If statement
+        if ($objects | Where-Object { $_.Type -eq 'If' -and $_.ActionName -eq $object.RunAfter } ) {
+            # IF this is not a True or False branch, ie it is the next action...
+            if ($object.RunAfter -eq ($object.Parent -replace '(-False|-True)', '')) {
+                $mermaidCode += "    $($object.RunAfter) --> $($Object.ActionName)" + [Environment]::NewLine
+                
+            } else {
+                # ... Point it to the subgraph of the If, and not the If decision box
+                $mermaidCode += "    $($object.RunAfter)If --> $($Object.ActionName)" + [Environment]::NewLine
+            }
+            continue
+        }
+
+        # If this is a scope record, then dont point to it, but the actions past it
+        if ($object.Type -eq 'Scope') {
+            foreach ($scopeObject in $objects | Where-Object { $_.RunAfter -eq $object.ActionName }) {
+                $mermaidCode += "    $($object.RunAfter) --> $($scopeObject.ActionName)" + [Environment]::NewLine
+            }
+            continue
+        }
         # Check if the runafter property is not empty
         if (![string]::IsNullOrEmpty($object.RunAfter)) { 
             if (($object.runAfter | Measure-Object).count -eq 1) {
@@ -265,7 +343,7 @@ Write-Verbose ($mermaidCallout)
 
 Write-Host ('Finished creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
 
-Sort-Action -Actions $objects
+# Sort-Action -Actions $objects
 
 if ($VerbosePreference -eq 'Continue') {
     Write-Verbose -Message ('Found {0} actions in Logic App' -f $Objects.Count)
