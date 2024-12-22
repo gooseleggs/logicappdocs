@@ -244,24 +244,30 @@ $objects | Where-Object { $_.Type -eq 'If' -and $_.Parent -eq $null } | ForEach-
 }
 
 # Iterate over the cache until cache is emptied replacing placeholders with code
-if ($ifCache.count -gt 0) {
-    $repeat = 1
-    $maxRepeat = $ifCache.count
-    while ($repeat -and $maxRepeat) {
-        $repeat = 0
+if ($ifCache.count) {
+    for ($loopCount = 1; $loopCount -le $ifCache.count; $loopCount++) {
+        $breakEarly = 1
+        # Iterate through all the if block cache
         foreach ($cacheObject in $ifCache.GetEnumerator()) {
+            # Can we find the placeholder value in mermaidCode...
             if ($mermaidCode | Select-String -Pattern "!{$($cacheObject.Name)}") {
-                Write-Host "$($cacheObject.Name): $($cacheObject.Value.code)"
+                # ... yes...so replace the placeholder with the actual block
+                Write-debug "$($cacheObject.Name): $($cacheObject.Value.code)"
                 $mermaidCode = $mermaidCode.replace("!{$($cacheObject.Name)}", $($cacheObject.Value.code))
+                # Signal that we have used this block
                 $ifCache[$cacheObject.Name].found = $true
             } else {
+                # Not found, so signal that we cannot break early
                 if (!($cacheObject.Value.found)) {
-                    write-host "$($cacheObject.Name) is not in string"
-                    $repeat = 1
+                    write-debug "$($cacheObject.Name) is not in mermaid Definition"
+                    $breakEarly = 0
                 }
             }         
         }
-        $maxRepeat--
+        # If the breakEarly flag is still set, then we have added all the blocks that we can, so exit loop early
+        if ($breakEarly) {
+            break
+        }
     }
 }
 
