@@ -233,10 +233,21 @@ $objects | Group-Object -Property Parent | ForEach-Object {
     else {}        
 }
 
+# Add any If blocks that do not have a parent
+$objects | Where-Object { $_.Type -eq 'If' -and $_.Parent -eq $null } | ForEach-Object {
+    $actionName = $_.ActionName
+    $mermaidCode += "    subgraph $($actionName)If [ ]" + [Environment]::NewLine
+    $mermaidCode += "    direction TB" + [Environment]::NewLine
+    $mermaidCode += "      $actionName{$actionName}" + [Environment]::NewLine
+    $mermaidCode += "!{$actionName}" + [Environment]::NewLine
+    $mermaidCode += "    end" + [Environment]::NewLine
+}
+
 # Iterate over the cache until cache is emptied replacing placeholders with code
 if ($ifCache.count -gt 0) {
     $repeat = 1
-    while ($repeat) {
+    $maxRepeat = $ifCache.count
+    while ($repeat -and $maxRepeat) {
         $repeat = 0
         foreach ($cacheObject in $ifCache.GetEnumerator()) {
             if ($mermaidCode | Select-String -Pattern "!{$($cacheObject.Name)}") {
@@ -250,6 +261,7 @@ if ($ifCache.count -gt 0) {
                 }
             }         
         }
+        $maxRepeat--
     }
 }
 
@@ -266,9 +278,22 @@ foreach ($object in $objects) {
         # If this is a scope object, skip otherwise we end up with a pointer back to outselves
 #        if ($object.Type -eq 'Scope') { continue }
 
-        # If the RHS object is a scope object, then ignore it
-        if ($objects | Where-Object { $_.Type -eq 'Scope' -and $_.ActionName -eq $object.RunAfter } ) {
+        # If this is a scope record, then dont point to it, but the actions past it
+        if ($object.Type -eq 'Scope') {
+            # If there are objects past this...
+            if ($objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
+                foreach ($scopeObject in $objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
+                    $mermaidCode += "    $($object.RunAfter) --> $($scopeObject.ActionName)" + [Environment]::NewLine
+                }
+            } else {
+                $mermaidCode += "    $($object.RunAfter) --> $($Object.ActionName)" + [Environment]::NewLine
+            }
             continue
+        } else {
+            # If the RHS object is a scope object, then ignore it
+            if ($objects | Where-Object { $_.Type -eq 'Scope' -and $_.ActionName -eq $object.RunAfter } ) {
+                    continue
+            }
         }
 
         # If this is a branch coming from an If statement
@@ -284,13 +309,6 @@ foreach ($object in $objects) {
             continue
         }
 
-        # If this is a scope record, then dont point to it, but the actions past it
-        if ($object.Type -eq 'Scope') {
-            foreach ($scopeObject in $objects | Where-Object { $_.RunAfter -eq $object.ActionName }) {
-                $mermaidCode += "    $($object.RunAfter) --> $($scopeObject.ActionName)" + [Environment]::NewLine
-            }
-            continue
-        }
         # Check if the runafter property is not empty
         if (![string]::IsNullOrEmpty($object.RunAfter)) { 
             if (($object.runAfter | Measure-Object).count -eq 1) {
