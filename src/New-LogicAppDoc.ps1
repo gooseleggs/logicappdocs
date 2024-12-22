@@ -185,7 +185,6 @@ Write-Host ('Creating Mermaid Diagram for Logic App') -ForegroundColor Green
 $mermaidCode = "graph TB" + [Environment]::NewLine
 $mermaidCode += "    Trigger" + [Environment]::NewLine
 
-#$inIf = 0
 $ifCache = @{}
 # Group actions by parent property
 $objects | Group-Object -Property Parent | ForEach-Object {
@@ -202,20 +201,17 @@ $objects | Group-Object -Property Parent | ForEach-Object {
             $displayName=''
             $childAction = $index.ActionName
             if ( $index.type -eq 'If') {
-                write-host "***************** $childAction is a $($index.type)"
+                write-debug "***************** $childAction is a $($index.type)"
                 $blockCode += "      subgraph $childAction$($displayName)If [ ]" + [Environment]::NewLine
                 $blockCode += "      direction TB" + [Environment]::NewLine
                 $blockCode += "        $childAction$displayName{$childAction}" + [Environment]::NewLine
-                $blockCode += "!{$childAction}" + [Environment]::NewLine
+                $blockCode += "!{$childAction}"
                 $blockCode += "      end" + [Environment]::NewLine
-#                $inIf ++
                 $displayName = "{$childAction}"
             } else {
                 $blockCode += "        $childAction$displayName" + [Environment]::NewLine
             }
         }
-#        $inIf--
-#        if (!$inIf) { $blockCode += "    end" + [Environment]::NewLine }
         $blockCode += "    end" + [Environment]::NewLine
         if (![string]::IsNullOrEmpty($subgraphDisplayName)) {
             write-host "Writing $subgraphName to cache"
