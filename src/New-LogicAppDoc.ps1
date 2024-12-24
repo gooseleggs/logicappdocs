@@ -350,9 +350,11 @@ foreach ($object in $objects) {
     }        
 }
 
-# Create link between trigger and first action
-$firstActionLink = ($objects | Where-Object { $_.Runafter -eq $null }).ActionName
-$mermaidCode += "    Trigger --> $firstActionLink" + [Environment]::NewLine
+# Create link between trigger and first action if we have not already created one
+if (!($mermaidCode -match "Trigger -->")) {
+    $firstActionLink = ($objects | Where-Object { $_.Runafter -eq $null }).ActionName
+    $mermaidCode += "    Trigger --> $firstActionLink" + [Environment]::NewLine
+}
 
 # Create the Call-out graph
 Write-Host ('Creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
