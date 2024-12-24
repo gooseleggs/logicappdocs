@@ -296,35 +296,42 @@ $mermaidCode = $modifiedLines -join "`n"
 foreach ($object in $objects) {
     if ($object | Get-Member -MemberType NoteProperty -Name 'RunAfter') {
 
-        # If this is a scope record, then dont point to it, but the actions past it
-        if ($object.Type -eq 'Scope' -or $object.Type -eq 'Foreach') {
-            # If there are objects past this...
-            if ($objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
-                foreach ($scopeObject in $objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
-                    $mermaidCode += "    $($object.RunAfter) --> $($scopeObject.ActionName)" + [Environment]::NewLine
-                }
-            } else {
-                $mermaidCode += "    $($object.RunAfter) --> $($Object.ActionName)" + [Environment]::NewLine
-            }
-            continue
-        } else {
-            # If the RHS object is a scope object, then ignore it
-            if ($objects | Where-Object { ($_.Type -eq 'Scope' -or $_.Type -eq 'Foreach') -and $_.ActionName -eq $object.RunAfter } ) {
-                    continue
-            }
-        }
-
         # If this is a branch coming from an If statement
         if ($objects | Where-Object { $_.Type -eq 'If' -and $_.ActionName -eq $object.RunAfter } ) {
             # If this is not a True or False branch, ie it is the next action...
             if ($object.RunAfter -eq ($object.Parent -replace '(-False|-True)', '')) {
                 $mermaidCode += "    $($object.RunAfter) --> $($Object.ActionName)" + [Environment]::NewLine
-                
             } else {
                 # ... Point it to the subgraph of the If, and not the If decision box
                 $mermaidCode += "    $($object.RunAfter)If --> $($Object.ActionName)" + [Environment]::NewLine
             }
             continue
+        }
+
+        # If this is a scope record, then dont point to it, but the actions past it
+        if ($object.Type -eq 'Scope' -or $object.Type -eq 'Foreach') {
+            # If there are objects past this...
+            if ($objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
+                foreach ($scopeObject in $objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
+                    if ([string]::IsNullOrEmpty($object.RunAfter)) {
+                        $mermaidCode += "    Trigger --> $($scopeObject.ActionName)" + [Environment]::NewLine
+                    } else {
+                        $mermaidCode += "    $($object.RunAfter) --> $($scopeObject.ActionName)" + [Environment]::NewLine
+                    }
+                }
+            } else {
+                if ([string]::IsNullOrEmpty($object.RunAfter)) {
+                    $mermaidCode += "    Trigger --> $($scopeObject.ActionName)" + [Environment]::NewLine
+                } else {
+                    $mermaidCode += "    $($object.RunAfter) --> $($Object.ActionName)" + [Environment]::NewLine
+                }
+            }
+            continue
+        } else {
+            # If the RHS object is a scope object, then ignore it
+            if (($object.RunAfter -eq $object.Parent) -and ($objects | Where-Object {($_.Type -eq 'Scope' -or $_.Type -eq 'Foreach') -and ($_.ActionName -eq $object.RunAfter) }) -and ![string]::IsNullOrEmpty($object.RunAfter)) {
+                continue
+            }
         }
 
         # Check if the runafter property is not empty
