@@ -183,7 +183,7 @@ if ($VerbosePreference -eq 'Continue') {
 Write-Host ('Creating Mermaid Diagram for Logic App') -ForegroundColor Green
 
 $mermaidCode = "graph TB" + [Environment]::NewLine
-$mermaidCode += "    Trigger" + [Environment]::NewLine
+$mermaidCode += "Trigger" + [Environment]::NewLine
 
 $ifCache = @{}
 # Group actions by parent property
@@ -194,25 +194,25 @@ $objects | Group-Object -Property Parent | ForEach-Object {
         $subgraphName = $_.Name
         if ($subgraphName.EndsWith("-True")) { $subgraphDisplayName = ' [True&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
         if ($subgraphName.EndsWith("-False")) { $subgraphDisplayName = ' [False&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'}
-        $blockCode += "    subgraph $subgraphName$subgraphDisplayName" + [Environment]::NewLine
-        $blockCode += "    direction TB" + [Environment]::NewLine
+        $blockCode += "subgraph $subgraphName$subgraphDisplayName" + [Environment]::NewLine
+        $blockCode += "direction TB" + [Environment]::NewLine
         # Add children action nodes to subgraph
         foreach ($index in $_.Group) {
             $displayName=''
             $childAction = $index.ActionName
             if ( $index.type -eq 'If') {
                 write-debug "***************** $childAction is a $($index.type)"
-                $blockCode += "      subgraph $childAction$($displayName)If [ ]" + [Environment]::NewLine
-                $blockCode += "      direction TB" + [Environment]::NewLine
-                $blockCode += "        $childAction$displayName{$childAction}" + [Environment]::NewLine
+                $blockCode += "subgraph $childAction$($displayName)If [ ]" + [Environment]::NewLine
+                $blockCode += "direction TB" + [Environment]::NewLine
+                $blockCode += "$childAction$displayName{$childAction}" + [Environment]::NewLine
                 $blockCode += "!{$childAction}"
-                $blockCode += "      end" + [Environment]::NewLine
+                $blockCode += "end" + [Environment]::NewLine
                 $displayName = "{$childAction}"
             } else {
-                $blockCode += "        $childAction$displayName" + [Environment]::NewLine
+                $blockCode += "$childAction$displayName" + [Environment]::NewLine
             }
         }
-        $blockCode += "    end" + [Environment]::NewLine
+        $blockCode += "end" + [Environment]::NewLine
         if (![string]::IsNullOrEmpty($subgraphDisplayName)) {
             write-host "Writing $subgraphName to cache"
             $ifName = $subgraphName -replace '(-False|-True)', ''
@@ -232,11 +232,11 @@ $objects | Group-Object -Property Parent | ForEach-Object {
 # Add any If blocks that do not have a parent
 $objects | Where-Object { $_.Type -eq 'If' -and $_.Parent -eq $null } | ForEach-Object {
     $actionName = $_.ActionName
-    $mermaidCode += "    subgraph $($actionName)If [ ]" + [Environment]::NewLine
-    $mermaidCode += "    direction TB" + [Environment]::NewLine
-    $mermaidCode += "      $actionName{$actionName}" + [Environment]::NewLine
+    $mermaidCode += "subgraph $($actionName)If [ ]" + [Environment]::NewLine
+    $mermaidCode += "direction TB" + [Environment]::NewLine
+    $mermaidCode += "$actionName{$actionName}" + [Environment]::NewLine
     $mermaidCode += "!{$actionName}" + [Environment]::NewLine
-    $mermaidCode += "    end" + [Environment]::NewLine
+    $mermaidCode += "end" + [Environment]::NewLine
 }
 
 # Iterate over the cache until cache is emptied replacing placeholders with code
@@ -274,14 +274,30 @@ foreach ($cacheObject in $ifCache.GetEnumerator()) {
     }
 }
 
+# Indenting code - we do it here, as we dont know when/where our If subblocks are
+# Define the number of spaces to add
+$spacesToAdd = 0
+
+# Split the input string into an array of lines
+$lines = $mermaidCode -split "`n"
+
+# Iterate over each line and add spaces
+$modifiedLines = $lines | ForEach-Object { 
+    $line = $_
+    if ($line -match '^end') { $spacesToAdd-=4 }
+    " " * $spacesToAdd + $line
+    if ($line -match "^Direction |^graph TB" ) { $spacesToAdd+=4 }
+}
+
+# Join the modified lines back into a single string
+$mermaidCode = $modifiedLines -join "`n"
+
 # Create links between runafter and actionname properties
 foreach ($object in $objects) {
     if ($object | Get-Member -MemberType NoteProperty -Name 'RunAfter') {
-        # If this is a scope object, skip otherwise we end up with a pointer back to outselves
-#        if ($object.Type -eq 'Scope') { continue }
 
         # If this is a scope record, then dont point to it, but the actions past it
-        if ($object.Type -eq 'Scope') {
+        if ($object.Type -eq 'Scope' -or $object.Type -eq 'Foreach') {
             # If there are objects past this...
             if ($objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
                 foreach ($scopeObject in $objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
@@ -293,14 +309,14 @@ foreach ($object in $objects) {
             continue
         } else {
             # If the RHS object is a scope object, then ignore it
-            if ($objects | Where-Object { $_.Type -eq 'Scope' -and $_.ActionName -eq $object.RunAfter } ) {
+            if ($objects | Where-Object { ($_.Type -eq 'Scope' -or $_.Type -eq 'Foreach') -and $_.ActionName -eq $object.RunAfter } ) {
                     continue
             }
         }
 
         # If this is a branch coming from an If statement
         if ($objects | Where-Object { $_.Type -eq 'If' -and $_.ActionName -eq $object.RunAfter } ) {
-            # IF this is not a True or False branch, ie it is the next action...
+            # If this is not a True or False branch, ie it is the next action...
             if ($object.RunAfter -eq ($object.Parent -replace '(-False|-True)', '')) {
                 $mermaidCode += "    $($object.RunAfter) --> $($Object.ActionName)" + [Environment]::NewLine
                 
