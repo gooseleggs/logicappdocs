@@ -214,7 +214,7 @@ $objects | Group-Object -Property Parent | ForEach-Object {
         }
         $blockCode += "end" + [Environment]::NewLine
         if (![string]::IsNullOrEmpty($subgraphDisplayName)) {
-            write-host "Writing $subgraphName to cache"
+            write-debug "Writing $subgraphName to cache"
             $ifName = $subgraphName -replace '(-False|-True)', ''
             if ($ifCache[$ifName]) {
                 $ifCache[$ifName].Code += $blockCode
@@ -225,8 +225,7 @@ $objects | Group-Object -Property Parent | ForEach-Object {
             $mermaidCode += $blockCode
         }
 
-    }
-    else {}        
+    }      
 }
 
 # Add any If blocks that do not have a parent
@@ -284,9 +283,12 @@ $lines = $mermaidCode -split "`n"
 # Iterate over each line and add spaces
 $modifiedLines = $lines | ForEach-Object { 
     $line = $_
-    if ($line -match '^end') { $spacesToAdd-=4 }
-    " " * $spacesToAdd + $line
-    if ($line -match "^Direction |^graph TB" ) { $spacesToAdd+=4 }
+    # If this is a blank line, then skip
+    if (![string]::IsNullOrEmpty($line)) { 
+        if ($line -match '^end') { $spacesToAdd-=4 }
+        " " * $spacesToAdd + $line
+        if ($line -match "^Direction |^graph TB" ) { $spacesToAdd+=4 }
+    }
 }
 
 # Join the modified lines back into a single string
