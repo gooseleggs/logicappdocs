@@ -231,7 +231,7 @@ $objects | Group-Object -Property Type | ForEach-Object {
             $value = $childAction.Value
             if ($name -eq 'Http') {
                 $guid = New-Guid
-                $value = $value.SubString(0, [math]::min($value.IndexOf("?"),$value.length))
+                $value = $value.SubString([math]::min([math]::max($value.IndexOf("?"),0),$value.length))
                 $calloutGraph += "      $guid$ (`"$value`")"  + [Environment]::NewLine
             } else {
                 if ($value -eq '') { $value = $childAction.ActionName}
