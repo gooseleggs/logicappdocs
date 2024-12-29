@@ -141,6 +141,7 @@ if (!($FilePath)) {
 
     $Location = $LogicApp.location
 
+    $Triggers = Get-Trigger -Triggers $($LogicApp.properties.definition.triggers)
     $Objects = Get-Action -Actions $($LogicApp.properties.definition.actions)
 
     # Get Logic App Connections
@@ -155,6 +156,7 @@ else {
     Write-Output -InputObject ('Using Logic App Workflow code from file "{0}"' -f $FilePath)
     $LogicApp = Get-Content -Path $FilePath | ConvertFrom-Json
 
+    $Triggers = Get-Trigger -Triggers $($LogicApp.definition.triggers)
     $Objects = Get-Action -Actions $($LogicApp.definition.actions)
 
     # Get Logic App Connections
@@ -173,17 +175,27 @@ else {
 
 # Ensure that there is an array of objects!
 if ($objects -isnot [system.array]) { $objects = @($objects)}
+if ($Triggers -isnot [system.array]) { $Triggers = @($Triggers)}
 
 if ($VerbosePreference -eq 'Continue') {
     Write-Verbose -Message ('Found {0} actions in Logic App' -f $Objects.Count)
     Write-Verbose ($objects | Format-Table | out-string)
+
+    Write-Verbose -Message ('Found {0} triggers in Logic App' -f $Triggers.Count)
+    Write-Verbose ($Triggers | Format-Table | out-string)    
 }
 
 # Create the Mermaid code
 Write-Host ('Creating Mermaid Diagram for Logic App') -ForegroundColor Green
 
+# Calculate name of trigger, or leave as default
+$TriggerName = 'Trigger'
+if ($Triggers[0].Name) {
+    $TriggerName = ($Triggers[0].Name -Replace " ","_") + "[$($Triggers[0].Name)]"
+}
+
 $mermaidCode = "graph TB" + [Environment]::NewLine
-$mermaidCode += "Trigger" + [Environment]::NewLine
+$mermaidCode += "$TriggerName" + [Environment]::NewLine
 
 $ifCache = @{}
 # Group actions by parent property
@@ -316,14 +328,14 @@ foreach ($object in $objects) {
             if ($objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
                 foreach ($scopeObject in $objects | Where-Object { $_.RunAfter -eq $object.ActionName -and $_.Parent -eq $object.ActionName }) {
                     if ([string]::IsNullOrEmpty($object.RunAfter)) {
-                        $mermaidCode += "    Trigger --> $($scopeObject.ActionName)" + [Environment]::NewLine
+                        $mermaidCode += "    $TriggerName --> $($scopeObject.ActionName)" + [Environment]::NewLine
                     } else {
                         $mermaidCode += "    $($object.RunAfter) --> $($scopeObject.ActionName)" + [Environment]::NewLine
                     }
                 }
             } else {
                 if ([string]::IsNullOrEmpty($object.RunAfter)) {
-                    $mermaidCode += "    Trigger --> $($scopeObject.ActionName)" + [Environment]::NewLine
+                    $mermaidCode += "    $TriggerName --> $($scopeObject.ActionName)" + [Environment]::NewLine
                 } else {
                     $mermaidCode += "    $($object.RunAfter) --> $($Object.ActionName)" + [Environment]::NewLine
                 }
@@ -351,9 +363,9 @@ foreach ($object in $objects) {
 }
 
 # Create link between trigger and first action if we have not already created one
-if (!($mermaidCode -match "Trigger -->")) {
+if (!($mermaidCode -match "$TriggerName -->")) {
     $firstActionLink = ($objects | Where-Object { $_.Runafter -eq $null }).ActionName
-    $mermaidCode += "    Trigger --> $firstActionLink" + [Environment]::NewLine
+    $mermaidCode += "    $TriggerName --> $firstActionLink" + [Environment]::NewLine
 }
 
 # Create the Call-out graph
@@ -410,6 +422,7 @@ $InputObject = [pscustomobject]@{
     'Connections'    = $Connections
     'Diagram'        = $mermaidCode
     'CalloutDiagram' = $mermaidCallout
+    'Triggers'       = $triggers
 }
 
 $options = New-PSDocumentOption -Option @{ 'Markdown.UseEdgePipes' = 'Always'; 'Markdown.ColumnPadding' = 'Single' };
