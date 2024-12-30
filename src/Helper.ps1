@@ -118,8 +118,14 @@ Function Get-Action {
         $inputs = if ($action | Get-Member -MemberType Noteproperty -Name 'inputs') { 
             $($action.inputs)
         } 
-        else { 
-            $null 
+        else {
+            # If there is an expression section, then likely an If statement
+            if ($action | Get-Member -MemberType Noteproperty -Name 'expression') { 
+                $($action.expression)
+            } 
+            else {
+                $null 
+            }
         }
 
         $type = $action.type
