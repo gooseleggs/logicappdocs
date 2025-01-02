@@ -7,8 +7,28 @@ Document 'Azure-LogicApp-Documentation' {
             [Parameter(Mandatory = $true)]
             $Json
         )
-    
-        (($Json -replace '^{', '<code>{') -replace '}$', '}</code>') -replace '\r\n', '<br>'
+
+        ("<table><tr><td><pre>$Json</pre></td></tr></table>") -replace '\r\n', '<br>'
+    }
+
+    # Formats JSON in a nicer format than the built-in ConvertTo-Json does.
+    function Format-Json([Parameter(Mandatory, ValueFromPipeline)][String] $json) {
+        $indent = 0;
+        ($json -Split '\n' |
+        % {
+            if ($_ -match '[\}\]]') {
+                # This line contains  ] or }, decrement the indentation level
+                if ($indent) {
+                    $indent--
+                }
+            }
+            $line = (' ' * $indent * 2) + $_.TrimStart().Replace(':  ', ': ')
+            if ($_ -match '[\{\[]') {
+                # This line contains [ or {, increment the indentation level
+                $indent++
+            }
+            $line
+        }) -Join "`n"
     }
 
     "# Azure Logic App Documentation - $($InputObject.LogicApp.name)"
@@ -52,8 +72,8 @@ $($InputObject.diagram)
         Section 'Actions' {            
             $($InputObject.actions) |                 
             Sort-Object -Property Order |  
-            Select-Object -Property 'ActionName', 'Comment', 'Type', 'RunAfter', @{Name = 'Inputs/Expressions'; Expression = { Format-MarkdownTableJson -Json $($_.Inputs) } } |
-            Table -Property 'ActionName', 'Comment', 'Type', 'RunAfter', 'Inputs/Expressions' 
+            Select-Object -Property 'ActionName', 'Comment', 'Type', 'RunAfter', @{Name = 'Inputs/Expressions'; Expression = { Format-MarkdownTableJson -Json $($_.Inputs | ConvertFrom-Json | ConvertTo-Json -Depth 10 | Format-Json)} } |
+            Table -Property 'ActionName', 'Comment', 'Type', 'RunAfter', 'Inputs/Expressions'            
         }
     }
 
@@ -63,7 +83,7 @@ $($InputObject.diagram)
 
             Section 'Connections' {
                 $($InputObject.Connections) |
-                Select-Object -Property 'ConnectionName', 'ConnectionId', @{Name = 'ConnectionProperties'; Expression = { Format-MarkdownTableJson -Json $($_.ConnectionProperties | ConvertTo-Json) } } |
+                Select-Object -Property 'ConnectionName', 'ConnectionId', @{Name = 'ConnectionProperties'; Expression = { Format-MarkdownTableJson -Json $($_.ConnectionProperties | ConvertTo-Json | Format-Json) } } |
                 Table -Property 'ConnectionName', 'ConnectionId', 'ConnectionProperties'
             }
         }
