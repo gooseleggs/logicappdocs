@@ -118,8 +118,14 @@ Function Get-Action {
         $inputs = if ($action | Get-Member -MemberType Noteproperty -Name 'inputs') { 
             $($action.inputs)
         } 
-        else { 
-            $null 
+        else {
+            # If there is an expression section, then likely an If statement
+            if ($action | Get-Member -MemberType Noteproperty -Name 'expression') { 
+                $($action.expression)
+            } 
+            else {
+                $null 
+            }
         }
 
         $type = $action.type
@@ -412,5 +418,35 @@ Function Format-HTMLInputContent {
     }
     else {
         $Inputs
+    }
+}
+
+Function Get-Trigger {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true)]
+        $Triggers
+    )
+
+    $method = ""
+    $schema = ""
+    foreach ($key in $Triggers.PSObject.Properties.Name) {
+        $trigger = $Triggers.$key
+        $type = $trigger.type
+        $kind = $($trigger.kind).ToUpper()
+        if ($trigger.inputs | Get-Member Method) {
+            $method = "$($trigger.inputs.method) "
+        }
+        if ($trigger.inputs.schema.properties) {
+            $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress
+        }
+        # Create PSCustomObject
+        [PSCustomObject]@{
+            Name   = "$kind $method$type"
+            Type   = $type
+            Kind   = $kind
+            Method = $method
+            Schema = $schema
+        }
     }
 }

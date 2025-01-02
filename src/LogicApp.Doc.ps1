@@ -56,14 +56,24 @@ $($InputObject.diagram)
 "@       
     }
     
+    Section 'Logic App Triggers' {
+        "This section shows an overview of the Logic App Triggers"
+
+        Section 'Triggers' {
+            $($InputObject.triggers) |
+            Select-Object -Property 'Name', 'Type', 'Kind', 'Method', @{Name = 'Schema'; Expression = { Format-MarkdownTableJson -Json $($_.Schema | ConvertFrom-Json | ConvertTo-Json -Depth 10)} } |
+            Table -Property 'Name', 'Type', 'Kind', 'Method', 'Schema'
+        }
+    }
+
     Section 'Logic App Workflow Actions' {
         "This section shows an overview of Logic App Workflow actions and their dependencies."
 
         Section 'Actions' {            
             $($InputObject.actions) |                 
             Sort-Object -Property Order |  
-            Select-Object -Property 'ActionName', 'Comment', 'Type', 'RunAfter', @{Name = 'Inputs'; Expression = { Format-MarkdownTableJson -Json $($_.Inputs | ConvertFrom-Json | ConvertTo-Json -Depth 10 | Format-Json)} } |
-            Table -Property 'ActionName', 'Comment', 'Type', 'RunAfter', 'Inputs'            
+            Select-Object -Property 'ActionName', 'Comment', 'Type', 'RunAfter', @{Name = 'Inputs/Expressions'; Expression = { Format-MarkdownTableJson -Json $($_.Inputs | ConvertFrom-Json | ConvertTo-Json -Depth 10 | Format-Json)} } |
+            Table -Property 'ActionName', 'Comment', 'Type', 'RunAfter', 'Inputs/Expressions'            
         }
     }
 
