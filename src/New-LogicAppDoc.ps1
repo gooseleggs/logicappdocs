@@ -290,7 +290,7 @@ foreach ($cacheObject in $ifCache.GetEnumerator()) {
 $spacesToAdd = 0
 
 # Split the input string into an array of lines
-$lines = $mermaidCode -split "`n"
+$lines = $mermaidCode -split [Environment]::NewLine
 
 # Iterate over each line and add spaces
 $modifiedLines = $lines | ForEach-Object { 
@@ -304,7 +304,7 @@ $modifiedLines = $lines | ForEach-Object {
 }
 
 # Join the modified lines back into a single string
-$mermaidCode = $modifiedLines -join "`n"
+$mermaidCode = $modifiedLines -join [Environment]::NewLine
 
 # Create links between runafter and actionname properties
 foreach ($object in $objects) {
@@ -433,40 +433,78 @@ $invokePSDocumentSplat = @{
     InputObject  = $InputObject
     Culture      = 'en-us'
     Option       = $options
-    OutputPath   = $OutputPath
     InstanceName = $LogicAppName
 }
 $markDownFile = Invoke-PSDocument @invokePSDocumentSplat
-$outputFile = $($markDownFile.FullName)
+
+$outputFile = [IO.Path]::GetFullPath(
+                    [IO.Path]::Combine($PWD.ProviderPath, $outputPath)
+                )
 # If file contains space remove the spaces and rename file
 if ($outputFile -match '\s') {
     $newOutputFile = $outputFile -replace '\s', '_'
-    if (Test-Path -Path $newOutputFile) {
-        Remove-Item -Path $newOutputFile -Force
-    }
-    Rename-Item -Path $outputFile -NewName $newOutputFile -Force
     $outputFile = $newOutputFile
 }
-Write-Host ('LogicApp Flow Markdown document is being created at {0}' -f $outputFile) -ForegroundColor Green
 #endregion
 
 
 #region replace \u0027 with ' in Markdown documentation for Logic App Workflow
 if($replaceU0027){
-    $pathToDocumentationFile = $outputFile
-    $documentationFileData = Get-Content -Path $pathToDocumentationFile 
-    $documentationFileData -replace '\\u0027' , "'" | set-content -path $pathToDocumentationFile 
+    $markDownFile = $markDownFile -replace '\\u0027' , "'"
 }
 #endregion
 
-#region Convert Markdown to ADOMarkdown if ConvertTo-ADOMarkdown parameter is used
-if ($ConvertToADOMarkdown) {
-    # Run Bootstrap.ps1 to install mermaid-cli
-    . (Join-Path $PSScriptRoot 'Bootstrap.ps1')
-    Write-Host ('Converting Markdown to ADOMarkdown') -ForegroundColor Green
-    $converttedOutputFile = ($outputFile -replace '.md$', '-ado.md')
-    & { mmdc -i $outputFile  -o $converttedOutputFile -e png }
-    Write-Host ('ADOMarkdown document is being created at {0}' -f $converttedOutputFile) -ForegroundColor Green
+#region Output update file if checksums different
+$checksumChangedOrNew = $true
+
+# Does the file already exist on the disk?
+if (Test-Path $outputFile -PathType Leaf) {
+    # ... Yes
+    # First off, lets check to see if the checksums are the same
+
+    $OrigHash = ((Get-Content $outputPath) | Out-String) -replace 'Date.*',''
+    # Calculate hash of the old file
+    $stringAsStream = [System.IO.MemoryStream]::new()
+    $writer = [System.IO.StreamWriter]::new($stringAsStream)
+    $writer.write($OrigHash)
+    $writer.Flush()
+    $stringAsStream.Position = 0
+    $OrigHash = Get-FileHash -InputStream $stringAsStream | Select-Object Hash
+
+    # Calculate hash of the new file
+    $stringAsStream = [System.IO.MemoryStream]::new()
+    $writer = [System.IO.StreamWriter]::new($stringAsStream)
+    $writer.write(($markDownFile -replace 'Date.*',''))
+    $writer.Flush()
+    $stringAsStream.Position = 0
+    $newHash = Get-FileHash -InputStream $stringAsStream | Select-Object Hash
+
+    Write-Verbose "Old File Hash: $($origHash.hash)"
+    Write-Verbose "New File Hash: $($newHash.hash)"
+
+    # If they the same, then mark to not replace
+    if ($origHash.hash -eq $newHash.hash) {
+        $checksumChangedOrNew = $false
+    }
+}
+
+#endregion
+
+if ($checksumChangedOrNew) {
+    Write-Host ('LogicApp Flow Markdown document is being created at {0}' -f $outputFile) -ForegroundColor Green
+    $markDownFile | set-content -path $outputPath -NoNewline -Encoding ASCII
+
+    #region Convert Markdown to ADOMarkdown if ConvertTo-ADOMarkdown parameter is used
+    if ($ConvertToADOMarkdown) {
+        # Run Bootstrap.ps1 to install mermaid-cli
+        . (Join-Path $PSScriptRoot 'Bootstrap.ps1')
+        Write-Host ('Converting Markdown to ADOMarkdown') -ForegroundColor Green
+        $converttedOutputFile = ($outputFile -replace '.md$', '-ado.md')
+        & { mmdc -i $outputFile  -o $converttedOutputFile -e png }
+        Write-Host ('ADOMarkdown document is being created at {0}' -f $converttedOutputFile) -ForegroundColor Green
+    }
+} else {
+    Write-Host ('File has not changed - not updating')
 }
 
 #region Open Markdown document if show parameter is used
