@@ -437,13 +437,17 @@ Function Get-Trigger {
         $trigger = $Triggers.$key
         $type = $trigger.type
         $kind = $($trigger.kind).ToUpper()
-        if ($trigger.inputs | Get-Member Method) {
-            $method = "$($trigger.inputs.method) "
+        if ($trigger | Get-Member -MemberType Noteproperty -Name 'inputs') {
+
+            if ($trigger.inputs | Get-Member Method) {
+                $method = "$($trigger.inputs.method) "
+            }
+
+            if ($trigger | Select-Object -ExpandProperty inputs | Get-Member schema) {
+                $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress
+            }
         }
 
-        if ($trigger | Select-Object -ExpandProperty inputs | Get-Member schema) {
-            $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress
-        }
         # Create PSCustomObject
         [PSCustomObject]@{
             Name   = "$kind $method$type"
