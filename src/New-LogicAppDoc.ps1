@@ -305,6 +305,7 @@ $modifiedLines = $lines | ForEach-Object {
 
 # Join the modified lines back into a single string
 $mermaidCode = $modifiedLines -join [Environment]::NewLine
+$mermaidCode += [Environment]::NewLine
 
 # Create links between runafter and actionname properties
 foreach ($object in $objects) {
