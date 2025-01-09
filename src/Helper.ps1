@@ -437,7 +437,8 @@ Function Get-Trigger {
         if ($trigger.inputs | Get-Member Method) {
             $method = "$($trigger.inputs.method) "
         }
-        if ($trigger.inputs.schema.properties) {
+
+        if ($trigger | Select-Object -ExpandProperty inputs | Get-Member schema) {
             $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress
         }
         # Create PSCustomObject
