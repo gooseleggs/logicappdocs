@@ -380,9 +380,8 @@ $objects | Group-Object -Property Type | ForEach-Object {
         foreach ($childAction in $_.Group) {
             $value = $childAction.Value
             if ($name -eq 'Http') {
-                $guid = New-Guid
-                $value = $value.SubString([math]::min([math]::max($value.IndexOf("?"),0),$value.length))
-                $calloutGraph += "      $guid$ (`"$value`")"  + [Environment]::NewLine
+                $guid = (($value -replace "/","_") -replace '\[','') -replace ']',''
+                $calloutGraph += "      $guid (`"$value`")"  + [Environment]::NewLine
             } else {
                 if ($value -eq '') { $value = $childAction.ActionName}
                 $calloutGraph += "      $value" + [Environment]::NewLine
@@ -463,6 +462,7 @@ if (Test-Path $outputFile -PathType Leaf) {
     # First off, lets check to see if the checksums are the same
 
     $OrigHash = ((Get-Content $outputPath) | Out-String) -replace 'Date.*',''
+
     # Calculate hash of the old file
     $stringAsStream = [System.IO.MemoryStream]::new()
     $writer = [System.IO.StreamWriter]::new($stringAsStream)
