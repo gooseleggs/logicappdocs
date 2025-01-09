@@ -55,6 +55,9 @@ Function Get-Category {
              $value = $action.inputs.uri
              $value = $value.replace( "@{parameters('", "[")
              $value = $value.replace("')}","]")
+             if ($value.indexOf('?') -gt 0) {
+                $value = $value.SubString(0, $value.indexOf('?'))
+             }
         }
         "ServiceProvider" {
             # If this is a keyvault blob
