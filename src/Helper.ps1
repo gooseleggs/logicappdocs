@@ -32,8 +32,10 @@ Function Get-Category {
         }
         "Function" {
             # Work out the function name by the URL
-            $value = $($action.inputs.function.id) -split "/"
-            $value = $value[($value.count)-3]
+            if ($action.inputs.function | Get-Member -MemberType Noteproperty -Name 'id') {
+                $value = $($action.inputs.function.id) -split "/"
+                $value = $value[($value.count)-3]
+            }
             $type = "Function"
         }
         "Workflow" {
