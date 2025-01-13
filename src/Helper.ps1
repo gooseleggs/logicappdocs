@@ -129,7 +129,13 @@ Function Get-Action {
                 $($action.expression)
             } 
             else {
-                $null 
+                # If there is a Foreach section, then likely a Foreach statement
+                if ($action | Get-Member -MemberType Noteproperty -Name 'Foreach') { 
+                    $($action.Foreach)
+                } 
+                else {
+                    $null 
+                }
             }
         }
 
