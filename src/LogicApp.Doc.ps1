@@ -66,6 +66,23 @@ $($InputObject.diagram)
         }
     }
 
+    if ($InputObject.Actions.Additional | select-Object { $_.type -eq 'SQL' } ) {
+        Section 'SQL' {
+            "This section details the connections to SQL."
+            "If the *Connection Reference* is not detailed under the **Connections section** (may not be present) then the connection information can be found in Logic App."
+
+            $($inputObject.Actions) |
+            Where-object { $_.type -eq 'Sql' } |
+            select-Object -Property @{Name='Action Name'; Expression = {$_.ActionName}},
+                @{Name='Server'; Expression = { $_.additional.server }},
+                @{Name='Database'; Expression = { $_.additional.database }},
+                @{Name='Query Type'; Expression = { $_.additional.sqlType }},
+                @{Name='Table/Procedure'; Expression = { $_.additional.procTable }},
+                @{Name='Conn Ref'; Expression = { $_.additional.connRef }} |
+            Table -Property 'Action Name', 'Conn Ref', 'Server', 'Database', 'Query Type', 'Table/Procedure'
+        }
+    }
+
     Section 'Logic App Workflow Actions' {
         "This section shows an overview of Logic App Workflow actions and their dependencies."
 

@@ -11,6 +11,7 @@ Function Get-Category {
 
     $type = $action.type
     $value = ''
+    $additional = $null
     switch ($action.type) {
         "ApiConnection" {
             # If this is a secret (or looks like a secret)
@@ -28,6 +29,22 @@ Function Get-Category {
             }
             if ( ($action.inputs.path).startsWith('/v2/datasets') ) {
                 $type = "SQL"
+                # Lets dipose the SQL path into a tablular format
+                $paths = $action.inputs.path -split "\('"
+                $server = ($paths[1] -split "'\)")[0]
+                $database = ($paths[2] -split "'\)")[0]
+                $connRef = $action.inputs.host.connection.referenceName
+                $sqlType = "Stored Proc"
+                if ($paths[2] -match "/tables/") { $sqlType = 'Table'}
+                $procTable = (($paths[3] -split "'\)")[0]) -replace "\[|\]",""
+                $additional = [PSCustomObject]@{
+                    Type      = $type
+                    server    = $server
+                    database  = $database
+                    sqlType   = $sqlType
+                    connRef   = $connRef
+                    procTable = $procTable
+                }
             }
         }
         "Function" {
@@ -69,8 +86,9 @@ Function Get-Category {
             }
         }
     }
-    return @{type= $type
-             value = $value
+    return @{type       = $type
+             value      = $value
+             additional = $additional
             }
 }
 
@@ -151,6 +169,7 @@ Function Get-Action {
             Value        = $category.value
             Parent       = $Parent
             Type         = $category.type
+            additional   = $category.additional
             ChildActions = $childActions
             Inputs       = if ($inputs) {
                 Format-HTMLInputContent -Inputs $(Remove-Secrets -Inputs $($inputs | ConvertTo-Json -Depth 10 -Compress))
