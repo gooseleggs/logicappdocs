@@ -117,6 +117,8 @@ Go to the directory where you have saved the Markdown file (OutputPath) and open
 
 ## Credits
 
+Thanks to [Stefan Stranger](https://github.com/stefanstranger) for creating the original script.  I just extended it after getting no response to pull requests.
+
 Special thanks and shoutouts to [Prateek Singh](https://github.com/PrateekKumarSingh) for his [Azure Visualizer tool](https://github.com/PrateekKumarSingh/AzViz). I used some of his code and inspiration to develop the LogicAppDocs script.
 
 [Rick Strahl](https://twitter.com/rickstrahl) with some Markdown tips and tricks and for creating the awesome [Markdown Monster](https://store.west-wind.com/product/markdown_monster_3) Editor, Viewer and Weblog Publisher for Windows.
@@ -131,10 +133,10 @@ And finally some great PowerShell community members for their feedback and sugge
 
 ## Change Log
 
-*V1.2.0 - TO BE RELEASED
+*V1.2.0 - TO BE RELEASED (Release Branch)
 * Added call out graph
 * Merge of Confluence pull request from upstream repository
-* 
+* Can document standard logic apps
 * Bug Fixes
   * Fix length problem for actionName < 5 characters
   * Fix count problems 
@@ -194,7 +196,7 @@ If you are ready to contribute, please visit the [contribution guide](CONTRIBUTI
 
 ## Maintainers
 
-- [Stefan Stranger](https://github.com/stefanstranger)
+- [Gooseleggs](https://github.com/gooseleggs)
 
 ## License
 
