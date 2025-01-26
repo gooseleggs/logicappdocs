@@ -7,9 +7,9 @@ This solution contains scripts to generate technical documentation for <u>Azure 
 This project uses GitHub Issues to track bugs and feature requests.
 Please search the existing issues before filing new issues to avoid duplicates.
 
-- For new issues, file your bug or feature request as a new [issue](https://github.com/stefanstranger/logicappdocs/issues).
+- For new issues, file your bug or feature request as a new [issue](https://github.com/gooseleggs/logicappdocs/issues).
   - If you can please add the Logic App Code (json content), cleared with any sensitive information to the issue if possible.
-- For help, discussion, and support questions about using this project, join or start a [discussion](https://github.com/stefanstranger/logicappdocs/discussions).
+- For help, discussion, and support questions about using this project, join or start a [discussion](https://github.com/gooseleggs/logicappdocs/discussions).
 
 Support for this project is limited to the resources listed above.
 
@@ -19,10 +19,15 @@ Clone the repository and run the script. The script will prompt you for the para
 
 ```powershell
 # Clone the repository
-git clone https://github.com/stefanstranger/logicappdocs.git
+git clone https://github.com/gooseleggs/logicappdocs.git
 ```
 
-## Run the New-LogicAppDoc.ps1 PowerShell script to create the Markdown file for an Azure Logic App
+There are two scripts that can be used for Logic apps
+ 
+ - New-LogicAppDoc.ps1 - original script with modifications - used when documenting consumption logic apps
+ - New-StandardLogicApp.ps1 - Used for documenting standard logic apps
+
+## Run the New-LogicAppDoc.ps1 PowerShell script to create the Markdown file for a consumption Azure Logic App
 
 Navigate to the folder where you have cloned the repository and run the New-LogicAppDoc.ps1 script.
 
@@ -41,6 +46,7 @@ Login-AzAccount -SubscriptionId <SubscriptionId>
 <img src="./images/logicappscript.png" alt="Powershell script screenshot of New-LogicAppDoc.ps1 script running in console" width="1200">
 
 ### Command line options
+
  | parameter | type | default | description |
  | --- | --- | --- | --- |
  | replaceU0027  | Bool | false | Removes U0027 characters from output |
@@ -54,6 +60,26 @@ Login-AzAccount -SubscriptionId <SubscriptionId>
  | LogicAppName | String | | Name of the logic app |
  | OutputPath | String | | Output file directory |
 
+## Run the New-StandardLogicApp.ps1 PowerShell script to create the Markdown file for a standard Azure Logic App
+
+Navigate to the folder where you have cloned the repository and run the New-StandardLogicApp.ps1 script.
+
+```powershell
+# Authenticate to Azure where the Azure Logic App is located
+Login-AzAccount -SubscriptionId <SubscriptionId>
+
+# Run the script
+# Example:
+#   .\src\New-StandardLogicApp.ps1 -SubscriptionId 'dfc1f10c-a847-4250-bde8-93c3d6c53ea0' -ResourceGroupName 'jiraintegration-demo-rg' -LogicAppName 'logic-jiraintegration-demo' -Location 'Australia-East' -WorkingDirectory "C:\Temp\logicApp\source" -OutputPath 'C:\Temp\logicApp\md" 
+ .\src\New-StandardLogicApp.ps1 -SubscriptionId *SubscriptionID* -ResourceGroupName *ResourceGroupName* -LogicAppName *LogicAppName* -Location *AzureLocationName* -WorkingDirectory *Directory_to_store_definition_files* -OutputPath *Direction_to_store_markdown_files*
+```
+This version of the script usings a working directory to download the defintion files for the workflows.  The output markdown is then written to another directory, along with a start file that provides an index for the workflows.
+
+It is highly suggested that the *workingDirectory* and the *OutputPath* are different directories.
+
+The script will remove workflow definitions that are no longer defined for the logic app from the source directory.
+
+The list of workflows in the start page contains when the source file was last modified by this script, and NOT by the logic app.
 
 
 ## Run the New-PowerAutomateDoc.ps1 PowerShell script to create the Markdown file for a Power Automate Flow
