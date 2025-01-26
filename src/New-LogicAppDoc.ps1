@@ -191,7 +191,7 @@ Write-Host ('Creating Mermaid Diagram for Logic App') -ForegroundColor Green
 # Calculate name of trigger, or leave as default
 $TriggerName = 'Trigger'
 if ($Triggers[0].Name) {
-    $TriggerName = ($Triggers[0].Name -Replace " ","_") + "[$($Triggers[0].Name)]"
+    $TriggerName = ((($Triggers[0].Name -Replace " ","_") -Replace "\(|\)","") + "[`"$($Triggers[0].Name)`"]") 
 }
 
 $mermaidCode = "graph TB" + [Environment]::NewLine
@@ -462,37 +462,24 @@ if (Test-Path $outputFile -PathType Leaf) {
     # ... Yes
     # First off, lets check to see if the checksums are the same
 
-    $OrigHash = ((Get-Content $outputPath) | Out-String) -replace 'Date.*',''
-
-    # Calculate hash of the old file
-    $stringAsStream = [System.IO.MemoryStream]::new()
-    $writer = [System.IO.StreamWriter]::new($stringAsStream)
-    $writer.write($OrigHash)
-    $writer.Flush()
-    $stringAsStream.Position = 0
-    $OrigHash = Get-FileHash -InputStream $stringAsStream | Select-Object Hash
-
-    # Calculate hash of the new file
-    $stringAsStream = [System.IO.MemoryStream]::new()
-    $writer = [System.IO.StreamWriter]::new($stringAsStream)
-    $writer.write(($markDownFile -replace 'Date.*',''))
-    $writer.Flush()
-    $stringAsStream.Position = 0
-    $newHash = Get-FileHash -InputStream $stringAsStream | Select-Object Hash
-
-    Write-Verbose "Old File Hash: $($origHash.hash)"
-    Write-Verbose "New File Hash: $($newHash.hash)"
-
-    # If they the same, then mark to not replace
-    if ($origHash.hash -eq $newHash.hash) {
-        $checksumChangedOrNew = $false
-    }
+    $fileData = (((Get-Content $outputPath) | Out-String) -replace 'Date.*','').Trim()
+    $markdownData = ($markDownFile -replace 'Date.*','').Trim()
+    $checksumChangedOrNew = $true
+    $checksumChangedOrNew = !(Compare-FileChecksumOfStrings -sourceString $fileData -TargetString $markdownData)
 }
 
 #endregion
 
 if ($checksumChangedOrNew) {
     Write-Host ('LogicApp Flow Markdown document is being created at {0}' -f $outputFile) -ForegroundColor Green
+
+    $directoryPath = Split-Path -Path $outputFile -Parent
+    # Ensure that the output directory exists
+    if (! (Test-Path -Path $directoryPath -PathType Container)) {
+        New-Item -Path $directoryPath -ItemType Directory -Force
+    }
+
+
     $markDownFile | set-content -path $outputPath -NoNewline -Encoding ASCII
 
     #region Convert Markdown to ADOMarkdown if ConvertTo-ADOMarkdown parameter is used
