@@ -463,7 +463,10 @@ Function Get-Trigger {
     foreach ($key in $Triggers.PSObject.Properties.Name) {
         $trigger = $Triggers.$key
         $type = $trigger.type
-        $kind = $($trigger.kind).ToUpper()
+        $kind = $key
+        if ($trigger | Get-Member -MemberType Noteproperty -Name 'kind') {
+            $kind = $($trigger.kind).ToUpper()
+        }
         if ($trigger | Get-Member -MemberType Noteproperty -Name 'inputs') {
 
             if ($trigger.inputs | Get-Member Method) {
@@ -484,4 +487,35 @@ Function Get-Trigger {
             Schema = $schema
         }
     }
+}
+
+function Compare-FileChecksumOfStrings {
+    param (
+        [string] $sourceString,
+        [string] $TargetString
+
+    )
+
+     # Calculate hash of the Source file
+    $stringAsStream = [System.IO.MemoryStream]::new()
+    $writer = [System.IO.StreamWriter]::new($stringAsStream)
+    $writer.write($sourceString)
+    $writer.Flush()
+    $stringAsStream.Position = 0
+    $sourceHash = Get-FileHash -InputStream $stringAsStream | Select-Object Hash
+
+    # Calculate hash of the new file
+    $stringAsStream = [System.IO.MemoryStream]::new()
+    $writer = [System.IO.StreamWriter]::new($stringAsStream)
+    $writer.write($targetString)
+    $writer.Flush()
+    $stringAsStream.Position = 0
+    $targetHash = Get-FileHash -InputStream $stringAsStream | Select-Object Hash
+
+    Write-Verbose "Source Hash: $($sourceHash.hash)"
+    Write-Verbose "New File Hash: $($targetHash.hash)"
+
+    # If they the same, then return true
+    [bool]($sourceHash.hash -eq $targetHash.hash)
+
 }
