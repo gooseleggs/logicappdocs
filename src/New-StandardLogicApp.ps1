@@ -65,6 +65,25 @@ $templateStandardPath = (Join-Path $PSScriptRoot 'LogicApp.Cover.Doc.ps1')
 #$LogicAppName = 'Unknown'
 #endregion
 
+
+@'
+ _                _         _                ____
+| |    ___   __ _(_) ___   / \   _ __  _ __ |  _ \  ___   ___ ___
+| |   / _ \ / _` | |/ __| / _ \ | '_ \| '_ \| | | |/ _ \ / __/ __|
+| |__| (_) | (_| | | (__ / ___ \| |_) | |_) | |_| | (_) | (__\__ \
+|_____\___/ \__, |_|\___/_/   \_\ .__/| .__/|____/ \___/ \___|___/
+            |___/               |_|   |_|
+                                                                                                                                                         
+Author: Kelvin Smith
+Modified from the codebase from: Stefan Stranger 
+Github: https://github.com/gooseleggs/logicappdocs
+Version: 2.0.0
+
+'@.foreach({
+        Write-Host $_ -ForegroundColor Magenta
+    })
+$global:shownLogo = $true
+
 #region Helper Functions
 
 # From PowerShell module AzViz. (https://raw.githubusercontent.com/PrateekKumarSingh/AzViz/master/AzViz/src/private/Test-AzLogin.ps1)
@@ -303,7 +322,6 @@ $LogicAppNameStored = $LogicAppName
          replaceU0027        = $true
      }
 
-     write-host "Output path is $outputPath\$LogicAppName\$wfName.md"
      write-Host "==================================================="
      Write-host "Processing $WorkingDirectory/$wfName/workflow.json"
      write-Host "==================================================="
@@ -349,3 +367,4 @@ $invokePSDocumentSplat = @{
 $markDownFile = Invoke-PSDocument @invokePSDocumentSplat
 $markDownFile | set-content -path "$outputPath/start.md" -force -NoNewline -Encoding ASCII
 
+$global:shownLogo = $false

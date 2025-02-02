@@ -39,22 +39,28 @@ Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
 $WarningPreference = 'SilentlyContinue'
 
+if (-not $global:shownLogo) {
+@'
 
-@"
-██╗      ██████╗  ██████╗ ██╗ ██████╗ █████╗ ██████╗ ██████╗ ██████╗  ██████╗  ██████╗███████╗
-██║     ██╔═══██╗██╔════╝ ██║██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔══██╗██╔═══██╗██╔════╝██╔════╝
-██║     ██║   ██║██║  ███╗██║██║     ███████║██████╔╝██████╔╝██║  ██║██║   ██║██║     ███████╗
-██║     ██║   ██║██║   ██║██║██║     ██╔══██║██╔═══╝ ██╔═══╝ ██║  ██║██║   ██║██║     ╚════██║
-███████╗╚██████╔╝╚██████╔╝██║╚██████╗██║  ██║██║     ██║     ██████╔╝╚██████╔╝╚██████╗███████║
-╚══════╝ ╚═════╝  ╚═════╝ ╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝     ╚═════╝  ╚═════╝  ╚═════╝╚══════╝
+ _                _         _                ____
+| |    ___   __ _(_) ___   / \   _ __  _ __ |  _ \  ___   ___ ___
+| |   / _ \ / _` | |/ __| / _ \ | '_ \| '_ \| | | |/ _ \ / __/ __|
+| |__| (_) | (_| | | (__ / ___ \| |_) | |_) | |_| | (_) | (__\__ \
+|_____\___/ \__, |_|\___/_/   \_\ .__/| .__/|____/ \___/ \___|___/
+            |___/               |_|   |_|
                                                                                                                                                          
-Author: Stefan Stranger
-Github: https://github.com/stefanstranger/logicappdocs
-Version: 1.1.5
+Author: Kelvin Smith
+Modified from the codebase from: Stefan Stranger 
+Github: https://github.com/gooseleggs/logicappdocs
+Version: 2.0.0
 
-"@.foreach({
+'@.foreach({
         Write-Host $_ -ForegroundColor Magenta
     })
+}
+
+# Set globally to true to prevent showing logo on subsequent runs
+$global:shownLogo = $true
 
 #region Import PowerShell Modules. Add more modules if needed
 if (Get-Module -ListAvailable -Name PSDocs) {
@@ -186,7 +192,7 @@ if ($VerbosePreference -eq 'Continue') {
 }
 
 # Create the Mermaid code
-Write-Host ('Creating Mermaid Diagram for Logic App') -ForegroundColor Green
+Write-Verbose ('Creating Mermaid Diagram for Logic App')
 
 # Calculate name of trigger, or leave as default
 $TriggerName = 'Trigger'
@@ -370,7 +376,7 @@ if (!($mermaidCode -match "$TriggerName -->")) {
 }
 
 # Create the Call-out graph
-Write-Host ('Creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
+Write-Verbose ('Creating Mermaid Call-Out Diagram for Logic App')
 
 $calloutGraph = ''
 $objects | Group-Object -Property Type | ForEach-Object {
@@ -400,7 +406,7 @@ if ($calloutGraph -ne '') {
 }
 Write-Verbose ($mermaidCallout)
 
-Write-Host ('Finished creating Mermaid Call-Out Diagram for Logic App') -ForegroundColor Green
+Write-Verbose ('Finished creating Mermaid Call-Out Diagram for Logic App')
 
 # Sort-Action -Actions $objects
 
