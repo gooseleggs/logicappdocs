@@ -1,3 +1,5 @@
 .vscode/settings.json
 examples/Azure-Kelvin*
+examples/wf*
+examples/uc*
 tests/Test-Logic*

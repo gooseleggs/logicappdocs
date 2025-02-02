@@ -39,7 +39,7 @@ Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
 $WarningPreference = 'SilentlyContinue'
 
-if (-not $global:shownLogo) {
+if (!(Test-Path variable:global:shownLogo)) {
 @'
 
  _                _         _                ____

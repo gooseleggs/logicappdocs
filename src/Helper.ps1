@@ -73,7 +73,9 @@ Function Get-Category {
             # Work out the workflow (logicApp) name by the URL
              $value = $action.inputs.uri
              $value = $value.replace( "@{parameters('", "[")
+             $value = $value.replace( "@{outputs('", "[")
              $value = $value.replace("')}","]")
+             $value = $value.replace("//","#sol;#sol;")
              if ($value.indexOf('?') -gt 0) {
                 $value = $value.SubString(0, $value.indexOf('?'))
              }
@@ -474,7 +476,9 @@ Function Get-Trigger {
             }
 
             if ($trigger | Select-Object -ExpandProperty inputs | Get-Member schema) {
-                $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress
+                if ($trigger.inputs | Select-Object -ExpandProperty schema | Get-Member properties) {
+                    $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress\
+                }
             }
         }
 
