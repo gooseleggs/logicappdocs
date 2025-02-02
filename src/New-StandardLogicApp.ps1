@@ -158,10 +158,11 @@ if (!($FilePath)) {
     $SubscriptionName = (Get-AzContext).Subscription.Name
 
     $files = "host.json", "connections.json", "parameters.json"
-    Write-Output $files
 
     # Download Files
+    Write-Host "Downloading configuration files..."
     $files | ForEach-Object {
+        Write-Output "  Downloading Config file $_"
         $hostFile = Invoke-AzRestMethod `
             -Uri "https://$LogicAppName.scm.azurewebsites.net/api/vfs/site/wwwroot/$_" `
             -ResourceId "https://management.azure.com/" 
@@ -188,6 +189,7 @@ if (!($FilePath)) {
     $workflows = Invoke-AzRestMethod `
         -Path "/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.Web/sites/$LogicAppName/workflows?api-version=2018-11-01"
     $workflowsObject = $workflows.Content | ConvertFrom-Json
+    Write-Host "Downloading workflows..."
     $workflowsObject.value | ForEach-Object {
         $name = $_.name -replace '.*/'
         Write-host "  Downloading definition for $name" -ForegroundColor Green
