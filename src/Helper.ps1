@@ -477,7 +477,7 @@ Function Get-Trigger {
 
             if ($trigger | Select-Object -ExpandProperty inputs | Get-Member schema) {
                 if ($trigger.inputs | Select-Object -ExpandProperty schema | Get-Member properties) {
-                    $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress\
+                    $schema = $trigger.inputs.schema.properties | ConvertTo-Json -Compress
                 }
             }
         }
