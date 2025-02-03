@@ -468,10 +468,11 @@ if (Test-Path $outputFile -PathType Leaf) {
     # ... Yes
     # First off, lets check to see if the checksums are the same
 
-    $fileData = (((Get-Content $outputPath) | Out-String) -replace 'Date.*','').Trim()
-    $markdownData = ($markDownFile -replace 'Date.*','').Trim()
+    $fileData = (((Get-Content $outputPath) | Out-String) -replace 'Date:.*','').Trim()
+    $markdownData = ($markDownFile -replace 'Date:.*','').Trim()
     $checksumChangedOrNew = $true
-    $checksumChangedOrNew = !(Compare-FileChecksumOfStrings -sourceString $fileData -TargetString $markdownData)
+
+    $checksumChangedOrNew = !(Compare-FileChecksumOfStrings -TargetString $fileData -sourceString $markdownData)
 }
 
 #endregion
