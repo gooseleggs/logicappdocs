@@ -224,7 +224,7 @@ if (!($FilePath)) {
         $json = Get-Content -Path "$WorkingDirectory/connections.json" | ConvertFrom-JSON
 
             # serviceProviderConnections
-            Write-Host "Procedding Service Provider Connections" 
+            Write-Host "Processing Service Provider Connections" 
             $LAconnections['serviceProviderConnections'] = @()
             $json.serviceProviderConnections | Get-Member -MemberType NoteProperty | ForEach-Object {
                 $key = $_.Name
@@ -289,7 +289,7 @@ if (!($FilePath)) {
             # Convert response to object
             $content = $connectionDetails.Content | ConvertFrom-Json
 
-            if ($LAconnectionDetails.StatusCode -eq 200 ) {    
+            if ($connectionDetails.StatusCode -eq 200 ) {    
                 $LAconnections['managedApiConnections'] += [PSCustomObject]@{
                     DisplayName = $content.properties.displayName
                     Name = $key
