@@ -83,6 +83,7 @@ Version: 2.0.0
         Write-Host $_ -ForegroundColor Magenta
     })
 $global:shownLogo = $true
+$connections = @()
 
 #region Helper Functions
 
@@ -213,6 +214,116 @@ if (!($FilePath)) {
 
     # Write out a definition file in case we read it back
     "{`"SubscriptionID`": `"$SubscriptionId`", `"SubscriptionName`": `"$SubscriptionName`",`"ResourceGroupName`": `"$ResourceGroupName`",`"LogicAppName`": `"$LogicAppName`"}" | ConvertFrom-Json | ConvertTo-JSON > "$WorkingDirectory/logicApp.json"
+
+    # Lets see if the defintion file exists
+    $LAconnections = @{}
+    if (Test-Path -Path "$WorkingDirectory/connections.json" -PathType Leaf) {
+
+        write-host "Getting Connection information"
+        # If it does...read in the variables and continue
+        $json = Get-Content -Path "$WorkingDirectory/connections.json" | ConvertFrom-JSON
+
+            # serviceProviderConnections
+            Write-Host "Procedding Service Provider Connections" 
+            $LAconnections['serviceProviderConnections'] = @()
+            $json.serviceProviderConnections | Get-Member -MemberType NoteProperty | ForEach-Object {
+                $key = $_.Name
+    #            write-Host $key
+                Write-host "  Processing $key Service Provider connection" -ForegroundColor Green
+                $json.serviceProviderConnections.$key | ForEach-Object {
+      
+                    $LAconnections['serviceProviderConnections'] += [PSCustomObject]@{
+                        DisplayName = $_.displayName
+                        Name = $key
+                        Parameters = $_.parameterValues | ConvertTo-JSON
+                        ServiceProvider = $_.serviceProvider
+                    }               
+                }
+            }
+
+        # Process FunctionConnections
+        write-host "Getting Function Connection information"
+        $LAconnections['functionConnections'] = @()
+        $json.functionConnections | Get-Member -MemberType NoteProperty | ForEach-Object {
+            $key = $_.Name
+    #        write-Host $key
+            Write-host "  Retrieving $key managed connection" -ForegroundColor Green
+
+            $functionID = $json.functionConnections.$key.function.id
+
+            $uri = "https://management.azure.com$($functionId)?api-version=2020-06-01"
+            $functionDetails = Invoke-AzRestMethod -Uri $uri
+            # Convert response to object
+            $content = $functionDetails.Content | ConvertFrom-Json
+
+            if ($functionDetails.StatusCode -eq 200 ) {    
+                $LAconnections['functionConnections'] += [PSCustomObject]@{
+                    DisplayName = $content.properties.name
+                    Name = $key
+                    Language = $content.properties.language
+                    Type = $content.type
+                    Location = $content.location
+                }
+            } else {
+                Write-host "    Issue retrieving connection details."
+                $LAconnections['functionConnections'] += [PSCustomObject]@{
+                    DisplayName = $content.properties.name
+                    Name = $key
+                    Status = 'Error'
+                    State = $content.error.code
+                    Parameters = $content.error.message
+                }            
+            }
+        }
+
+        # Process ManagedAPIConnections
+        $LAconnections['managedApiConnections'] = @()
+        write-host "Getting Managed API Connection information"
+        $json.managedApiConnections | Get-Member -MemberType NoteProperty | ForEach-Object {
+            $key = $_.Name
+            Write-host "  Retrieving $key managed connection" -ForegroundColor Green
+            $connectionId = $json.managedApiConnections."$key".connection.id
+            #[PSCustomObject]@{Key = $key; Value = $json.managedApiConnections."$key"}
+            $uri = "https://management.azure.com$($connectionId)?api-version=2018-07-01-preview"
+            $connectionDetails = Invoke-AzRestMethod -Uri $uri
+            # Convert response to object
+            $content = $connectionDetails.Content | ConvertFrom-Json
+
+            if ($LAconnectionDetails.StatusCode -eq 200 ) {    
+                $LAconnections['managedApiConnections'] += [PSCustomObject]@{
+                    DisplayName = $content.properties.displayName
+                    Name = $key
+                    Status = $content.properties.overallStatus
+                    State = $content.properties.connectionState
+                    Parameters = $content.properties.parameterValueSet | ConvertTo-Json
+                    Type = $content.properties.api.displayName
+                    Location = $content.location
+                    Tags = $content.tags
+                }
+
+            } else {
+                Write-host "    Issue retrieving connection details."
+                $LAconnections['managedApiConnections'] += [PSCustomObject]@{
+                    DisplayName = $content.properties.displayName
+                    Name = $key
+                    Status = 'Error'
+                    State = $content.error.code
+                    Parameters = $content.error.message
+                    Type = ''
+                    Location = ''
+                    Tags = ''
+                }            
+            }
+        }
+
+        # Output to working directory
+        $LAconnections | ConvertTo-JSON | Out-File -FilePath "$WorkingDirectory/resolved_connections.json"
+
+    } else {
+        # ... else ah oh - time to quit  
+        Write-Host 'Cannot find connections.json' -ForegroundColor Yellow
+    }
+
     Write-Host "Finished Downloading"
 
 } else {
@@ -221,6 +332,10 @@ if (!($FilePath)) {
 
     # Standardize on WorkingDirectory variable
     $WorkingDirectory = $FilePath
+
+    if (Test-path -Path "$workingDirectory/resolved_connections.json") {
+        $LAconnections = Get-Content -Path "$workingDirectory/resolved_connections.json" | ConvertFrom-JSON
+    }
 }
 
 # Now we have (hopefully) a populated folder, lets get down to work
@@ -261,7 +376,9 @@ if (Test-Path -Path "$WorkingDirectory/parameters.json" -PathType Leaf) {
     exit
 }    
 
- 
+#endregion
+
+
 $workflows = Get-ChildItem -Path  "$WorkingDirectory" -Directory | Select-Object Name, LastWriteTime
 
 # Get all subfolders
@@ -335,7 +452,6 @@ $LogicAppNameStored = $LogicAppName
 
 
 # Create an Index document
-
 #region Generate Cover Markdown documentation for Standard Logic App Workflow
 $InputObject = [pscustomobject]@{
     'LogicApp'       = [PSCustomObject]@{
@@ -345,14 +461,12 @@ $InputObject = [pscustomobject]@{
         SubscriptionName  = $SubscriptionName
         Parameters        = $LAParameters
         Workflows         = $workflows
+        Connections       = $LAConnections
     }
-
-#    'Parameters'     = $LAParameters
-#    'Connections'    = $Connections
 }
 
 write-Host "==================================================="
-Write-host "Creating Start document"
+Write-host "Creating Readme document"
 write-Host "==================================================="
 
 $options = New-PSDocumentOption -Option @{ 'Markdown.UseEdgePipes' = 'Always'; 'Markdown.ColumnPadding' = 'Single' };
@@ -367,6 +481,6 @@ $invokePSDocumentSplat = @{
 }
 
 $markDownFile = Invoke-PSDocument @invokePSDocumentSplat
-$markDownFile | set-content -path "$outputPath/start.md" -force -NoNewline -Encoding ASCII
+$markDownFile | set-content -path "$outputPath/README.md" -force -NoNewline -Encoding ASCII
 
 $global:shownLogo = $false

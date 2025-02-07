@@ -15,7 +15,7 @@ Document 'Azure-Standard-LogicApp-Documentation' {
     function Format-Json([Parameter(Mandatory, ValueFromPipeline)][String] $json) {
         $indent = 0;
         ($json -Split '\n' |
-        % {
+        ForEach-Object {
             if ($_ -match '[\}\]]') {
                 # This line contains  ] or }, decrement the indentation level
                 if ($indent) {
@@ -64,15 +64,32 @@ Document 'Azure-Standard-LogicApp-Documentation' {
         }
     }
 
-    if ($InputObject.Connections) {
+    if ($InputObject.LogicApp.Connections) {
         Section 'Logic App Connections' {
             "This section shows an overview of Logic App Workflow connections."
 
-            Section 'Connections' {
-                $($InputObject.Connections) |
-                Select-Object -Property 'ConnectionName', 'ConnectionId', @{Name = 'ConnectionProperties'; Expression = { Format-MarkdownTableJson -Json $($_.ConnectionProperties | ConvertTo-Json | Format-Json) } } |
-                Table -Property 'ConnectionName', 'ConnectionId', 'ConnectionProperties'
+            Section 'Functions' {
+                $($InputObject.LogicApp.Connections.functionConnections) |
+                Select-Object -Property 'DisplayName','Name','Language','Type','Location' |
+                Table -Property 'Name','DisplayName','Language','Location','Type'
+            }
+
+            Section 'Managed API' {
+                $($InputObject.LogicApp.Connections.managedApiConnections) |
+                Select-Object -Property 'State', 'Status','Name','DisplayName', 'Type','Location',
+                        @{Name = 'Parameters'; Expression = { Format-MarkdownTableJson -Json $($_.Parameters | ConvertFrom-Json | ConvertTo-Json | Format-Json) } },
+                        @{Name = 'Tags'; Expression = { "<pre>$($_.tags)<pre>" -replace '@{' -replace '}' -replace '; ',"<br>" -replace "'" }} |
+                Table -Property 'Name','DisplayName','State','Status','Type','Location','Tags','Parameters'
+            }
+
+            Section 'Service Provider Connections' {
+                $($InputObject.LogicApp.Connections.serviceProviderConnections) |
+                Select-Object -Property 'DisplayName','Name',
+                @{Name = 'serviceProvider'; Expression = { "<pre>$($_.serviceProvider)<pre>" -replace '@{id=/serviceProviders/' -replace '}' -replace '; ',"<br>" -replace "'" }},
+                @{Name = 'Parameters'; Expression = { Format-MarkdownTableJson -Json $($_.Parameters | ConvertFrom-Json | ConvertTo-Json | Format-Json) } },'Type','Location',@{Name = 'Tags'; Expression = { "<pre>$($_.tags)<pre>" -replace '@{' -replace '}' -replace '; ',"<br>" -replace "'" }} |
+                Table -Property 'Name','DisplayName','ServiceProvider','Parameters'
             }
         }
     }
+
 }
