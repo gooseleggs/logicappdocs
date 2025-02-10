@@ -38,6 +38,8 @@ Document 'Azure-Standard-LogicApp-Documentation' {
         "This document is programmatically generated using a PowerShell script."
         
         "Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+
+        "$($InputObject.LogicApp.Overview)"
     }
    
     Section 'Workflows' {
