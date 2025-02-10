@@ -160,6 +160,12 @@ if (!($FilePath)) {
 
     $files = "host.json", "connections.json", "parameters.json"
 
+    # Create source directory if it does not exist
+    if (!( Test-Path -Path "$WorkingDirectory/$name")) {
+        write-host "Creating directory '$WorkingDirectory/$name'"
+        New-Item -Path "$WorkingDirectory/$name" -Type Directory | Out-Null
+    }
+
     # Download Files
     Write-Host "Downloading configuration files..."
     $files | ForEach-Object {
@@ -203,7 +209,7 @@ if (!($FilePath)) {
             $writeFile = !(Compare-FileChecksumOfStrings -sourceString ($hostFile.Content).Trim() -TargetString (Get-Content $WorkingDirectory/$name/workflow.json -Raw).Trim())
         }
         if ($writeFile) {
-            Write-output "$name Logic app workflow differs from local copy - updating"
+            Write-output "$name Logic app is new or updated - writing"
             New-Item -Path "$WorkingDirectory/$name/workflow.json" -ItemType File -Force | Out-Null
             $hostFile.Content > "$WorkingDirectory/$name/workflow.json"
         }

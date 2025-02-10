@@ -126,6 +126,9 @@ Function Test-AzLogin {
 # This holds any powershell files that are found
 $powerShellFiles = @()
 
+# Assume there is no overview MD file
+$overviewMD = ''
+
 #region Get Logic App Workflow code
 if (!($FilePath)) {
 
@@ -148,7 +151,6 @@ if (!($FilePath)) {
     $LogicApp = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
     #endregion
 
-    $overviewMD = ''
     $Location = $LogicApp.location
 
     $Triggers = Get-Trigger -Triggers $($LogicApp.properties.definition.triggers)
