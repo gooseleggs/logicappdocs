@@ -38,6 +38,8 @@ Document 'Azure-LogicApp-Documentation' {
         "This document is programmatically generated using a PowerShell script."
         
         "Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+
+        "$($InputObject.Overview)"
     }
 
     Section 'Logic App Call-Out Diagram' -If {  $($InputObject.CalloutDiagram) -ne '' } {
@@ -102,6 +104,21 @@ $($InputObject.diagram)
                 $($InputObject.Connections) |
                 Select-Object -Property 'ConnectionName', 'ConnectionId', @{Name = 'ConnectionProperties'; Expression = { Format-MarkdownTableJson -Json $($_.ConnectionProperties | ConvertTo-Json | Format-Json) } } |
                 Table -Property 'ConnectionName', 'ConnectionId', 'ConnectionProperties'
+            }
+        }
+    }
+
+    # If we have any powershell file
+    if (($InputObject.PowerShell).count) {
+        Section 'PowerShell Scripts' {
+            "This section details found Powershell Scripts."
+
+            $($InputObject.PowerShell) | ForEach-Object {
+                Section "$($_.Name)" {
+                    '```powershell'
+                   "$($_.Content)"
+                   '```'
+                }
             }
         }
     }

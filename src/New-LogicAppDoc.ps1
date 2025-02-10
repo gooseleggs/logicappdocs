@@ -123,6 +123,9 @@ Function Test-AzLogin {
 }
 #endregion
 
+# This holds any powershell files that are found
+$powerShellFiles = @()
+
 #region Get Logic App Workflow code
 if (!($FilePath)) {
 
@@ -145,6 +148,7 @@ if (!($FilePath)) {
     $LogicApp = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
     #endregion
 
+    $overviewMD = ''
     $Location = $LogicApp.location
 
     $Triggers = Get-Trigger -Triggers $($LogicApp.properties.definition.triggers)
@@ -164,6 +168,22 @@ else {
 
     $Triggers = Get-Trigger -Triggers $($LogicApp.definition.triggers)
     $Objects = Get-Action -Actions $($LogicApp.definition.actions)
+
+    # If there is an overview.md file, then load that for addition to the Markdown file
+    $path = Split-Path -Path $FilePath -Parent -Resolve
+    if (Test-Path -Path "$path/Overview.md") {
+        write-host "    Found Overview.md"
+        $overviewMD = Get-Content -Path "$path/overview.md" -Raw
+    }
+
+    # If there are any PowerShell files, read them for inclusion in the markdown output
+    Get-ChildItem -Path "$path/*.ps1" -File | ForEach-Object {
+        Write-Host "    Found PowerShell file '$($_.Name)'"
+        $powerShellFiles += [PSCustomObject]@{
+            Name      = $_.Name
+            Content   = Get-Content -Raw -Path "$path/$($_.Name)"
+        }
+    }
 
     # Get Logic App Connections
     if ($LogicApp | Get-Member -MemberType NoteProperty -Name 'parameters') {
@@ -429,6 +449,8 @@ $InputObject = [pscustomobject]@{
     'Diagram'        = $mermaidCode
     'CalloutDiagram' = $mermaidCallout
     'Triggers'       = $triggers
+    'Overview'       = $overviewMD
+    'PowerShell'     = $powerShellFiles
 }
 
 $options = New-PSDocumentOption -Option @{ 'Markdown.UseEdgePipes' = 'Always'; 'Markdown.ColumnPadding' = 'Single' };

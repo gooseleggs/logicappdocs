@@ -197,6 +197,7 @@ if (!($FilePath)) {
         $hostFile = Invoke-AzRestMethod `
             -Uri "https://$LogicAppName.scm.azurewebsites.net/api/vfs/site/wwwroot/$name/workflow.json" `
             -ResourceId "https://management.azure.com/" 
+
         $writeFile = $true
         if (Test-Path -Path $WorkingDirectory/$name/workflow.json -PathType leaf) {
             $writeFile = !(Compare-FileChecksumOfStrings -sourceString ($hostFile.Content).Trim() -TargetString (Get-Content $WorkingDirectory/$name/workflow.json -Raw).Trim())
@@ -206,6 +207,47 @@ if (!($FilePath)) {
             New-Item -Path "$WorkingDirectory/$name/workflow.json" -ItemType File -Force | Out-Null
             $hostFile.Content > "$WorkingDirectory/$name/workflow.json"
         }
+
+        # Store a list of files that should be in the directory
+        $fileList = @{ 'workflow.json' = $true; 'overview.md' = $true }
+        # See if there are any PowerShell scripts
+
+        $codeFileLines = $hostFile.Content | Where-Object { $_ -match '"CodeFile":' }
+        $codeFileLines | ForEach-Object {
+            if ($_ -match '"CodeFile":\s*"([^"]+)"') {
+                $filename = $matches[1]
+                $fileList[$filename] = $true
+                Write-host "    Downloading PowerShell script for $name - $filename" -ForegroundColor Green
+                $powerShellScript = Invoke-AzRestMethod `
+                    -Uri "https://$LogicAppName.scm.azurewebsites.net/api/vfs/site/wwwroot/$name/$filename" `
+                    -ResourceId "https://management.azure.com/"
+                if ($powerShellScript.StatusCode -eq 200) {
+                    $writeFile=$true
+                    if (Test-Path -Path $WorkingDirectory/$name/$filename -PathType leaf) {
+                        $writeFile = !(Compare-FileChecksumOfStrings -sourceString ($powerShellScript.Content).Trim() -TargetString (Get-Content $WorkingDirectory/$name/$filename -Raw).Trim())
+                    }
+                    if ($writeFile) {
+                        Write-output "      $filename PowerShell differs from local copy - updating"
+                        New-Item -Path "$WorkingDirectory/$name/$filename" -ItemType File -Force | Out-Null
+                        $powerShellScript.Content > "$WorkingDirectory/$name/$filename"
+                    }
+                } else {
+                    Write-host "    Error downloading PowerShell Script" -ForegroundColor Yellow
+                }
+            }
+        }
+        # Delete any items that should not be their
+        # Get the list of folders in the target directory
+        $targetFiles = Get-ChildItem -Path $workingDirectory/$name -File
+
+        # Compare and delete files in the target directory that are not in the source directory
+        foreach ($file in $targetFiles) {
+            if ( -not $fileList.ContainsKey($file.Name)) {
+                Remove-Item -Path $file.FullName -Force
+                Write-Output "Deleted file: $($file.FullName)"
+            }
+        }
+
         $sourceFolderNames[$name] = $true
     }
 
@@ -428,17 +470,17 @@ $LogicAppNameStored = $LogicAppName
      $wfName =  $_.Name
 
      $params = @{
-         SubscriptionName = $SubscriptionName
-         ResourceGroupName = $ResourceGroupName
-         Location         = $Location
-         FilePath         = "$WorkingDirectory/$wfName/workflow.json"
-         LogicAppName     = $wfName
-         OutputPath       = "$outputPath\$wfName.md"
-         Verbose          = $false
-         Debug            = $false
-         ConvertToADOMarkdown = $false
-         Show             = $false
-         replaceU0027        = $true
+         SubscriptionName       = $SubscriptionName
+         ResourceGroupName      = $ResourceGroupName
+         Location               = $Location
+         FilePath               = "$WorkingDirectory/$wfName/workflow.json"
+         LogicAppName           = $wfName
+         OutputPath             = "$outputPath\$wfName.md"
+         Verbose                = $false
+         Debug                  = $false
+         ConvertToADOMarkdown   = $false
+         Show                   = $false
+         replaceU0027           = $true
      }
 
      write-Host "==================================================="
@@ -451,6 +493,17 @@ $LogicAppNameStored = $LogicAppName
  }
 
 
+write-Host "==================================================="
+Write-host "Creating Readme document"
+
+$overview = ''
+if (Test-Path -Path "$WorkingDirectory/Overview.md" ) {
+   write-host "    Found Overview.md"
+   $overview = Get-Content "$WorkingDirectory/Overview.md" -Raw
+}
+
+write-Host "==================================================="
+
 # Create an Index document
 #region Generate Cover Markdown documentation for Standard Logic App Workflow
 $InputObject = [pscustomobject]@{
@@ -462,12 +515,9 @@ $InputObject = [pscustomobject]@{
         Parameters        = $LAParameters
         Workflows         = $workflows
         Connections       = $LAConnections
+        Overview          = $overview
     }
 }
-
-write-Host "==================================================="
-Write-host "Creating Readme document"
-write-Host "==================================================="
 
 $options = New-PSDocumentOption -Option @{ 'Markdown.UseEdgePipes' = 'Always'; 'Markdown.ColumnPadding' = 'Single' };
 $null = [PSDocs.Configuration.PSDocumentOption]$Options

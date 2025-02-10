@@ -73,13 +73,22 @@ Login-AzAccount -SubscriptionId <SubscriptionId>
 #   .\src\New-StandardLogicApp.ps1 -SubscriptionId 'dfc1f10c-a847-4250-bde8-93c3d6c53ea0' -ResourceGroupName 'jiraintegration-demo-rg' -LogicAppName 'logic-jiraintegration-demo' -Location 'Australia-East' -WorkingDirectory "C:\Temp\logicApp\source" -OutputPath 'C:\Temp\logicApp\md" 
  .\src\New-StandardLogicApp.ps1 -SubscriptionId *SubscriptionID* -ResourceGroupName *ResourceGroupName* -LogicAppName *LogicAppName* -Location *AzureLocationName* -WorkingDirectory *Directory_to_store_definition_files* -OutputPath *Direction_to_store_markdown_files*
 ```
-This version of the script usings a working directory to download the defintion files for the workflows.  The output markdown is then written to another directory, along with a start file that provides an index for the workflows.
+This version of the script uses a working directory to download the defintion files for the workflows.  The output markdown is then written to another directory, along with a start file that provides an index for the workflows.
 
 It is highly suggested that the *workingDirectory* and the *OutputPath* are different directories.
 
 The script will remove workflow definitions that are no longer defined for the logic app from the source directory.
 
 The list of workflows in the start page contains when the source file was last modified by this script, and NOT by the logic app.
+
+Non-code documentation can be included with Standard Logic App automated documentation.  This is achieved by creating an *overview.md* in the workflow folder created when the script is run for the first time.  The overview.md file contains markdown format of anything you want to include and is inserted verbatim.  This is where you can put information such as:
+ - Overview
+ - Maintainer
+ - Dependancies
+ - Details
+ - Example payloads
+
+If the overview.md file is present at the top level directory, where the host.json file is, then the overview.md file is included in the README.md. file
 
 
 ## Run the New-PowerAutomateDoc.ps1 PowerShell script to create the Markdown file for a Power Automate Flow
